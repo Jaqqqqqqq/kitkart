@@ -247,6 +247,38 @@ async function users(req, res) {
   }
 }
 
+async function updateUserRole(req, res) {
+  try {
+    await adminModel.updateUserRole(req.params.id, req.body.role);
+
+    return res.json({
+      success: true,
+      message: 'User role updated.',
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Unable to update role.',
+    });
+  }
+}
+
+async function updateUserStatus(req, res) {
+  try {
+    await adminModel.updateUserStatus(req.params.id, req.body.status);
+
+    return res.json({
+      success: true,
+      message: 'User status updated.',
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Unable to update status.',
+    });
+  }
+}
+
 module.exports = {
   categories,
   createCategory,
@@ -262,5 +294,7 @@ module.exports = {
   products,
   updateCategory,
   updateProduct,
+  updateUserRole,
+  updateUserStatus,
   users,
 };

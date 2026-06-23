@@ -1,4 +1,5 @@
 const { pool } = require('../config/db');
+const { Category, Product, User } = require('../config/sequelize');
 
 function normalizeProductInput(input) {
   return {
@@ -118,45 +119,32 @@ async function getOrderById(orderId) {
 }
 
 async function getProducts() {
-  const [products] = await pool.execute(
-    `SELECT
-       p.id,
-       p.category_id,
-       p.product_name,
-       p.description,
-       p.price,
-       p.stock_quantity,
-       p.image,
-       c.category_name
-     FROM products p
-     INNER JOIN categories c ON c.id = p.category_id
-     ORDER BY p.product_name ASC`
-  );
+  const products = await Product.findAll({
+    include: [{ model: Category, attributes: ['category_name'] }],
+    order: [['product_name', 'ASC']],
+  });
 
   return products.map((product) => ({
-    ...product,
+    ...product.get({ plain: true }),
+    category_name: product.Category.category_name,
     price: Number(product.price),
     stock_quantity: Number(product.stock_quantity),
   }));
 }
 
 async function getProductById(productId) {
-  const [products] = await pool.execute(
-    `SELECT id, category_id, product_name, description, price, stock_quantity, image
-     FROM products
-     WHERE id = ?
-     LIMIT 1`,
-    [productId]
-  );
+  const product = await Product.findByPk(productId);
 
-  if (products.length === 0) {
+  if (!product) {
     return null;
   }
 
+  const plainProduct = product.get({ plain: true });
+
   return {
-    ...products[0],
-    price: Number(products[0].price),
-    stock_quantity: Number(products[0].stock_quantity),
+    ...plainProduct,
+    price: Number(plainProduct.price),
+    stock_quantity: Number(plainProduct.stock_quantity),
   };
 }
 
@@ -170,11 +158,7 @@ async function createProduct(input) {
     throw validationError;
   }
 
-  await pool.execute(
-    `INSERT INTO products (category_id, product_name, description, price, stock_quantity, image)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [product.category_id, product.product_name, product.description, product.price, product.stock_quantity, product.image]
-  );
+  await Product.create(product);
 }
 
 async function updateProduct(productId, input) {
@@ -187,38 +171,23 @@ async function updateProduct(productId, input) {
     throw validationError;
   }
 
-  await pool.execute(
-    `UPDATE products
-     SET category_id = ?, product_name = ?, description = ?, price = ?, stock_quantity = ?, image = ?
-     WHERE id = ?`,
-    [product.category_id, product.product_name, product.description, product.price, product.stock_quantity, product.image, productId]
-  );
+  await Product.update(product, { where: { id: productId } });
 }
 
 async function deleteProduct(productId) {
-  await pool.execute('DELETE FROM products WHERE id = ?', [productId]);
+  await Product.destroy({ where: { id: productId } });
 }
 
 async function getCategories() {
-  const [categories] = await pool.execute(
-    `SELECT id, category_name, description, created_at
-     FROM categories
-     ORDER BY category_name ASC`
-  );
+  const categories = await Category.findAll({ order: [['category_name', 'ASC']] });
 
-  return categories;
+  return categories.map((category) => category.get({ plain: true }));
 }
 
 async function getCategoryById(categoryId) {
-  const [categories] = await pool.execute(
-    `SELECT id, category_name, description
-     FROM categories
-     WHERE id = ?
-     LIMIT 1`,
-    [categoryId]
-  );
+  const category = await Category.findByPk(categoryId);
 
-  return categories[0] || null;
+  return category ? category.get({ plain: true }) : null;
 }
 
 async function createCategory(input) {
@@ -231,11 +200,7 @@ async function createCategory(input) {
     throw validationError;
   }
 
-  await pool.execute(
-    `INSERT INTO categories (category_name, description)
-     VALUES (?, ?)`,
-    [category.category_name, category.description]
-  );
+  await Category.create(category);
 }
 
 async function updateCategory(categoryId, input) {
@@ -248,26 +213,43 @@ async function updateCategory(categoryId, input) {
     throw validationError;
   }
 
-  await pool.execute(
-    `UPDATE categories
-     SET category_name = ?, description = ?
-     WHERE id = ?`,
-    [category.category_name, category.description, categoryId]
-  );
+  await Category.update(category, { where: { id: categoryId } });
 }
 
 async function deleteCategory(categoryId) {
-  await pool.execute('DELETE FROM categories WHERE id = ?', [categoryId]);
+  await Category.destroy({ where: { id: categoryId } });
 }
 
 async function getUsers() {
-  const [users] = await pool.execute(
-    `SELECT id, first_name, last_name, email, role, status, phone, address, created_at
-     FROM users
-     ORDER BY created_at DESC, id DESC`
-  );
+  const users = await User.findAll({
+    attributes: ['id', 'first_name', 'last_name', 'email', 'role', 'status', 'phone', 'address', 'created_at'],
+    order: [
+      ['created_at', 'DESC'],
+      ['id', 'DESC'],
+    ],
+  });
 
-  return users;
+  return users.map((user) => user.get({ plain: true }));
+}
+
+async function updateUserRole(userId, role) {
+  if (!['admin', 'customer'].includes(role)) {
+    const error = new Error('Please select a valid role.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  await User.update({ role }, { where: { id: userId } });
+}
+
+async function updateUserStatus(userId, status) {
+  if (!['active', 'inactive'].includes(status)) {
+    const error = new Error('Please select a valid status.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  await User.update({ status }, { where: { id: userId } });
 }
 
 module.exports = {
@@ -284,4 +266,6 @@ module.exports = {
   getUsers,
   updateCategory,
   updateProduct,
+  updateUserRole,
+  updateUserStatus,
 };
