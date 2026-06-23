@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/catalog.css">
+</head>
+<body>
+  <main class="page">
+    <header class="catalog-header">
+      <div>
+        <a href="/orders" class="back-link">Back to order history</a>
+        <h1>Order #<%= order.id %></h1>
+        <p>Status: <%= order.order_status %></p>
+      </div>
+    </header>
+
+    <section class="cart-panel">
+      <p>Payment: <strong><%= order.payment_method %></strong></p>
+
+      <div class="cart-table-wrap">
+        <table class="cart-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Price</th>
+              <th>Quantity</th>
+              <th>Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% order.items.forEach((item) => { %>
+              <tr>
+                <td><%= item.product_name %></td>
+                <td>PHP <%= item.price.toFixed(2) %></td>
+                <td><%= item.quantity %></td>
+                <td>PHP <%= item.subtotal.toFixed(2) %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="cart-summary">
+        <p></p>
+        <p>Total: PHP <strong><%= order.total.toFixed(2) %></strong></p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
