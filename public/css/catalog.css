@@ -326,6 +326,41 @@ button:disabled {
   background: #ffffff;
 }
 
+.admin-form {
+  display: grid;
+  gap: 10px;
+  max-width: 560px;
+}
+
+.admin-form label {
+  font-weight: 700;
+}
+
+.admin-form input,
+.admin-form select,
+.admin-form textarea {
+  width: 100%;
+  border: 1px solid #cbd5df;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #ffffff;
+  font: inherit;
+}
+
+.admin-form button {
+  width: fit-content;
+}
+
+.inline-form {
+  display: inline-block;
+  margin-left: 8px;
+}
+
+.inline-form button {
+  padding: 7px 10px;
+  font-size: 14px;
+}
+
 .form-error {
   border: 1px solid #fecaca;
   border-radius: 6px;

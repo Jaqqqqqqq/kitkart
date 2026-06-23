@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/catalog.css">
+</head>
+<body>
+  <main class="page">
+    <header class="catalog-header">
+      <div>
+        <a href="/dashboard" class="back-link">Dashboard</a>
+        <h1>Categories</h1>
+      </div>
+      <a href="/admin/categories/new" class="button-link">Add category</a>
+    </header>
+
+    <section class="cart-panel">
+      <% if (categories.length === 0) { %>
+        <p class="empty-message is-visible">No categories found.</p>
+      <% } else { %>
+        <div class="cart-table-wrap">
+          <table class="cart-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% categories.forEach((category) => { %>
+                <tr>
+                  <td><%= category.category_name %></td>
+                  <td><%= category.description || '-' %></td>
+                  <td>
+                    <a href="/admin/categories/<%= category.id %>/edit">Edit</a>
+                    <form action="/admin/categories/<%= category.id %>/delete" method="POST" class="inline-form">
+                      <button type="submit" class="remove-button">Delete</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+  </main>
+</body>
+</html>

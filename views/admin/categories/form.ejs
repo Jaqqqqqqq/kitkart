@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/catalog.css">
+</head>
+<body>
+  <main class="page">
+    <header class="catalog-header">
+      <div>
+        <a href="/admin/categories" class="back-link">Back to categories</a>
+        <h1><%= title %></h1>
+      </div>
+    </header>
+
+    <section class="cart-panel">
+      <% if (error) { %>
+        <p class="form-error"><%= error %></p>
+      <% } %>
+
+      <form action="<%= action %>" method="POST" class="admin-form">
+        <label for="category_name">Category name</label>
+        <input id="category_name" name="category_name" value="<%= category.category_name %>" required>
+
+        <label for="description">Description</label>
+        <textarea id="description" name="description" rows="4"><%= category.description %></textarea>
+
+        <button type="submit">Save category</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

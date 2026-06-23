@@ -6,6 +6,7 @@ const bodyParser = require('body-parser');
 const { testConnection } = require('./config/db');
 const indexRoutes = require('./routes');
 const authRoutes = require('./routes/authRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const productRoutes = require('./routes/productRoutes');
 const cartRoutes = require('./routes/cartRoutes');
@@ -37,6 +38,7 @@ app.use((req, res, next) => {
 
 app.use('/', indexRoutes);
 app.use('/auth', authRoutes);
+app.use('/admin', adminRoutes);
 app.use('/', dashboardRoutes);
 app.use('/products', productRoutes);
 app.use('/cart', cartRoutes);

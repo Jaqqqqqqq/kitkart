@@ -133,12 +133,14 @@ async function postLogin(req, res) {
       });
     }
 
+    const role = String(user.role || '').trim().toLowerCase();
+
     req.session.user = {
       id: user.id,
       first_name: user.first_name,
       last_name: user.last_name,
       email: user[USERNAME_COLUMN],
-      role: user.role,
+      role,
     };
 
     return res.redirect('/dashboard');

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/catalog.css">
+</head>
+<body>
+  <main class="page">
+    <header class="catalog-header">
+      <div>
+        <a href="/dashboard" class="back-link">Dashboard</a>
+        <h1>User Accounts</h1>
+      </div>
+    </header>
+
+    <section class="cart-panel">
+      <% if (users.length === 0) { %>
+        <p class="empty-message is-visible">No users found.</p>
+      <% } else { %>
+        <div class="cart-table-wrap">
+          <table class="cart-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Phone</th>
+                <th>Address</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% users.forEach((user) => { %>
+                <tr>
+                  <td><%= user.first_name %> <%= user.last_name %></td>
+                  <td><%= user.email %></td>
+                  <td><%= user.role %></td>
+                  <td><%= user.status %></td>
+                  <td><%= user.phone || '-' %></td>
+                  <td><%= user.address || '-' %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+  </main>
+</body>
+</html>

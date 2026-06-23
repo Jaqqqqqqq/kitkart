@@ -7,13 +7,27 @@
 </head>
 <body>
   <main>
-    <h1>Dashboard</h1>
+    <% const isAdmin = currentUser.role === 'admin'; %>
+    <h1><%= isAdmin ? 'Admin Dashboard' : 'Customer Dashboard' %></h1>
     <p>Welcome, <%= currentUser.first_name %>.</p>
-    <p>You are logged in as <%= currentUser.email %>.</p>
+    <p>You are logged in as <%= currentUser.email %> (<%= currentUser.role %>).</p>
 
-    <p><a href="/products">Browse school supplies</a></p>
-    <p><a href="/cart">View cart</a></p>
-    <p><a href="/orders">Order history</a></p>
+    <% if (isAdmin) { %>
+      <section>
+        <h2>Administration</h2>
+        <p><a href="/admin/orders">All orders</a></p>
+        <p><a href="/admin/products">Products</a></p>
+        <p><a href="/admin/categories">Categories</a></p>
+        <p><a href="/admin/users">User accounts</a></p>
+      </section>
+    <% } else { %>
+      <section>
+        <h2>Shopping</h2>
+        <p><a href="/products">Browse school supplies</a></p>
+        <p><a href="/cart">View cart</a></p>
+        <p><a href="/orders">Order history</a></p>
+      </section>
+    <% } %>
 
     <form action="/auth/logout" method="POST">
       <button type="submit">Logout</button>
