@@ -1,12 +1,56 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %></title>
   <link rel="stylesheet" href="/css/catalog.css">
+  <style>
+    .user-action-form { display: inline; }
+    .user-action-btn {
+      padding: 4px 10px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .user-action-btn.role-btn { background: #4f46e5; color: #fff; }
+    .user-action-btn.role-btn:hover { background: #4338ca; }
+    .user-action-btn.activate-btn { background: #16a34a; color: #fff; }
+    .user-action-btn.activate-btn:hover { background: #15803d; }
+    .user-action-btn.deactivate-btn { background: #dc2626; color: #fff; }
+    .user-action-btn.deactivate-btn:hover { background: #b91c1c; }
+    .status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .status-badge.active { background: #dcfce7; color: #15803d; }
+    .status-badge.inactive { background: #fee2e2; color: #b91c1c; }
+    .role-select {
+      padding: 3px 6px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      margin-right: 4px;
+    }
+    .actions-cell { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .msg-toast {
+      position: fixed; top: 16px; right: 16px;
+      padding: 10px 18px; border-radius: 6px;
+      font-size: 0.9rem; font-weight: 600;
+      display: none; z-index: 999;
+    }
+    .msg-toast.success { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+    .msg-toast.error   { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+  </style>
 </head>
 <body>
+  <div id="toast" class="msg-toast"></div>
+
   <main class="page">
     <header class="catalog-header">
       <div>
@@ -29,17 +73,53 @@
                 <th>Status</th>
                 <th>Phone</th>
                 <th>Address</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               <% users.forEach((user) => { %>
-                <tr>
+                <tr id="user-row-<%= user.id %>">
                   <td><%= user.first_name %> <%= user.last_name %></td>
                   <td><%= user.email %></td>
-                  <td><%= user.role %></td>
-                  <td><%= user.status %></td>
+                  <td id="role-cell-<%= user.id %>"><%= user.role %></td>
+                  <td>
+                    <span id="status-badge-<%= user.id %>" class="status-badge <%= user.status %>">
+                      <%= user.status %>
+                    </span>
+                  </td>
                   <td><%= user.phone || '-' %></td>
                   <td><%= user.address || '-' %></td>
+                  <td>
+                    <div class="actions-cell">
+                      <!-- Role update -->
+                      <select id="role-select-<%= user.id %>" class="role-select">
+                        <option value="customer" <%= user.role === 'customer' ? 'selected' : '' %>>Customer</option>
+                        <option value="admin" <%= user.role === 'admin' ? 'selected' : '' %>>Admin</option>
+                      </select>
+                      <button
+                        class="user-action-btn role-btn"
+                        onclick="updateRole(<%= user.id %>)">
+                        Update Role
+                      </button>
+
+                      <!-- Activate / Deactivate -->
+                      <% if (user.status === 'active') { %>
+                        <button
+                          id="status-btn-<%= user.id %>"
+                          class="user-action-btn deactivate-btn"
+                          onclick="updateStatus(<%= user.id %>, 'inactive')">
+                          Deactivate
+                        </button>
+                      <% } else { %>
+                        <button
+                          id="status-btn-<%= user.id %>"
+                          class="user-action-btn activate-btn"
+                          onclick="updateStatus(<%= user.id %>, 'active')">
+                          Activate
+                        </button>
+                      <% } %>
+                    </div>
+                  </td>
                 </tr>
               <% }) %>
             </tbody>
@@ -48,5 +128,68 @@
       <% } %>
     </section>
   </main>
+
+  <script>
+    function showToast(message, type) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'msg-toast ' + type;
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 3000);
+    }
+
+    async function updateRole(userId) {
+      const role = document.getElementById('role-select-' + userId).value;
+      try {
+        const res = await fetch('/admin/users/' + userId + '/role', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ role }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('role-cell-' + userId).textContent = role;
+          showToast('Role updated to ' + role + '.', 'success');
+        } else {
+          showToast(data.message || 'Failed to update role.', 'error');
+        }
+      } catch (e) {
+        showToast('Request failed.', 'error');
+      }
+    }
+
+    async function updateStatus(userId, newStatus) {
+      try {
+        const res = await fetch('/admin/users/' + userId + '/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ status: newStatus }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          const badge = document.getElementById('status-badge-' + userId);
+          badge.textContent = newStatus;
+          badge.className = 'status-badge ' + newStatus;
+
+          const btn = document.getElementById('status-btn-' + userId);
+          if (newStatus === 'inactive') {
+            btn.textContent = 'Activate';
+            btn.className = 'user-action-btn activate-btn';
+            btn.onclick = function() { updateStatus(userId, 'active'); };
+          } else {
+            btn.textContent = 'Deactivate';
+            btn.className = 'user-action-btn deactivate-btn';
+            btn.onclick = function() { updateStatus(userId, 'inactive'); };
+          }
+
+          showToast('Account ' + newStatus + '.', 'success');
+        } else {
+          showToast(data.message || 'Failed to update status.', 'error');
+        }
+      } catch (e) {
+        showToast('Request failed.', 'error');
+      }
+    }
+  </script>
 </body>
 </html>

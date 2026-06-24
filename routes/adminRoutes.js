@@ -25,5 +25,7 @@ router.post('/categories/:id', adminController.updateCategory);
 router.post('/categories/:id/delete', adminController.deleteCategory);
 
 router.get('/users', adminController.users);
+router.post('/users/:id/role', adminController.updateUserRole);
+router.post('/users/:id/status', adminController.updateUserStatus);
 
 module.exports = router;
