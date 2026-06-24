@@ -2,6 +2,7 @@ const path = require('path');
 const express = require('express');
 const session = require('express-session');
 const bodyParser = require('body-parser');
+const multer = require('multer');
 
 const { testConnection } = require('./config/db');
 const indexRoutes = require('./routes');
@@ -20,6 +21,13 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/images', express.static(path.join(__dirname, 'public/images')));
+
+const upload = multer({
+  dest: 'public/images/'
+});
+
+app.locals.upload = upload;
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 

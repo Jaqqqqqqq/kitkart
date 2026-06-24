@@ -1,133 +1,257 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %></title>
-  <link rel="stylesheet" href="/css/catalog.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title><%= title %></title>
+
+<link rel="stylesheet" 
+href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.min.css">
+
+<link rel="stylesheet" href="/css/catalog.css">
+
 </head>
+
 <body>
-  <main class="page">
-    <header class="catalog-header">
-      <div>
-        <a href="/dashboard" class="back-link">Dashboard</a>
-        <h1>School Supplies Catalog</h1>
-        <p>Browse notebooks, writing materials, art supplies, bags, and classroom essentials.</p>
-        <p><a href="/cart">View cart</a></p>
-      </div>
 
-      <form action="/auth/logout" method="POST">
-        <button type="submit">Logout</button>
-      </form>
-    </header>
+<main class="page">
 
-    <section class="filters" aria-label="Product filters">
-      <div>
-        <label for="productSearch">Search</label>
-        <input id="productSearch" type="search" placeholder="Search school supplies">
-      </div>
+<header class="catalog-header">
 
-      <div>
-        <label for="categoryFilter">Category</label>
-        <select id="categoryFilter">
-          <option value="">All categories</option>
-          <% categories.forEach((category) => { %>
-            <option value="<%= category.id %>"><%= category.category_name %></option>
-          <% }) %>
-        </select>
-      </div>
-    </section>
+<div>
+<a href="/dashboard" class="back-link">
+Dashboard
+</a>
 
-    <section class="product-grid" id="productGrid">
-      <% products.forEach((product) => { %>
-        <article
-          class="product-card"
-          data-name="<%= product.product_name.toLowerCase() %>"
-          data-category-id="<%= product.category_id %>"
-        >
-          <a href="/products/<%= product.id %>" class="product-image">
-            <% if (product.image_url) { %>
-              <img src="<%= product.image_url %>" alt="<%= product.product_name %>" loading="lazy">
-            <% } %>
-            <span class="image-placeholder <%= product.image_url ? 'is-hidden' : '' %>">No image</span>
-          </a>
+<h1>
+Products Management
+</h1>
 
-          <div class="product-body">
-            <p class="category"><%= product.category_name %></p>
-            <h2><a href="/products/<%= product.id %>"><%= product.product_name %></a></h2>
-            <p class="price">PHP <%= Number(product.price).toFixed(2) %></p>
-            <p class="stock">Stock: <%= product.stock_quantity || 0 %></p>
+</div>
 
-            <form class="add-to-cart-form" action="/cart/items" method="POST">
-              <input type="hidden" name="product_id" value="<%= product.id %>">
-              <input type="hidden" name="quantity" value="1">
-              <button type="submit" <%= Number(product.stock_quantity) < 1 ? 'disabled' : '' %>>
-                Add to Cart
-              </button>
-              <span class="cart-message" aria-live="polite"></span>
-            </form>
-          </div>
-        </article>
-      <% }) %>
-    </section>
 
-    <p id="emptyCatalogMessage" class="empty-message">No school supplies match your search.</p>
-  </main>
+<a href="/admin/products/new" class="button-link">
+Add Product
+</a>
 
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script>
-    $(function () {
-      function filterProducts() {
-        const searchText = $('#productSearch').val().toLowerCase().trim();
-        const selectedCategory = $('#categoryFilter').val();
-        let visibleCount = 0;
 
-        $('.product-card').each(function () {
-          const $card = $(this);
-          const matchesSearch = $card.data('name').includes(searchText);
-          const matchesCategory = !selectedCategory || String($card.data('category-id')) === selectedCategory;
-          const shouldShow = matchesSearch && matchesCategory;
+</header>
 
-          $card.toggle(shouldShow);
 
-          if (shouldShow) {
-            visibleCount += 1;
-          }
-        });
 
-        $('#emptyCatalogMessage').toggle(visibleCount === 0);
-      }
+<section class="cart-panel">
 
-      $('.product-card img').on('error', function () {
-        $(this).hide().siblings('.image-placeholder').removeClass('is-hidden');
-      });
 
-      $('#productSearch').on('input', filterProducts);
-      $('#categoryFilter').on('change', filterProducts);
+<table id="productsTable" class="display">
 
-      $('.add-to-cart-form').on('submit', function (event) {
-        event.preventDefault();
+<thead>
 
-        const $form = $(this);
-        const $message = $form.find('.cart-message');
+<tr>
 
-        $.ajax({
-          url: $form.attr('action'),
-          method: 'POST',
-          data: $form.serialize(),
-          dataType: 'json',
-          success: function (response) {
-            $message.removeClass('is-error').text(response.message || 'Added to cart.');
-          },
-          error: function (xhr) {
-            const response = xhr.responseJSON || {};
-            $message.addClass('is-error').text(response.message || 'Unable to add item.');
-          }
-        });
-      });
+<th>ID</th>
+<th>Name</th>
+<th>Category</th>
+<th>Price</th>
+<th>Stock</th>
+<th>Image</th>
+<th>Actions</th>
 
-      filterProducts();
-    });
-  </script>
+
+</tr>
+
+</thead>
+
+
+<tbody>
+
+
+</tbody>
+
+
+</table>
+
+
+</section>
+
+
+</main>
+
+
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js">
+</script>
+
+
+<script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js">
+</script>
+
+
+
+<script>
+
+
+$(document).ready(function(){
+
+
+let table = $('#productsTable').DataTable({
+
+
+ajax: {
+
+
+url:'/admin/products/data',
+type:'GET'
+
+
+},
+
+
+
+columns:[
+
+
+{
+data:'id'
+},
+
+
+{
+data:'product_name'
+},
+
+
+{
+data:'category_name'
+},
+
+
+{
+data:'price',
+
+render:function(data){
+
+return "PHP " + parseFloat(data).toFixed(2);
+
+}
+
+},
+
+
+
+{
+data:'stock_quantity'
+},
+
+
+
+{
+data:'image',
+
+render:function(data){
+
+return data ? data : '-';
+
+}
+
+},
+
+
+
+
+{
+
+
+data:'id',
+
+
+render:function(id){
+
+
+return `
+
+<a href="/admin/products/${id}/edit">
+Edit
+</a>
+
+
+<button 
+class="deleteBtn"
+data-id="${id}">
+Delete
+</button>
+
+
+`;
+
+
+}
+
+
+}
+
+
+
+]
+
+
+
+});
+
+
+
+
+
+$(document).on('click','.deleteBtn',function(){
+
+
+
+let id=$(this).data('id');
+
+
+
+if(confirm("Delete this product?")){
+
+
+$.ajax({
+
+
+url:'/admin/products/'+id+'/delete',
+
+
+type:'POST',
+
+
+
+success:function(){
+
+
+table.ajax.reload();
+
+
+}
+
+
+
+});
+
+
+}
+
+
+
+});
+
+
+
+
+});
+
+
+
+</script>
+
+
 </body>
+
 </html>

@@ -10,12 +10,23 @@ router.use(requireAdmin);
 router.get('/orders', adminController.orders);
 router.get('/orders/:id', adminController.orderDetails);
 
+router.get('/products/data', adminController.productsData);
 router.get('/products', adminController.products);
 router.get('/products/new', adminController.newProduct);
-router.post('/products', adminController.createProduct);
 router.get('/products/:id/edit', adminController.editProduct);
-router.post('/products/:id', adminController.updateProduct);
 router.post('/products/:id/delete', adminController.deleteProduct);
+router.post(
+  '/products',
+  adminController.upload.single('image'),
+  adminController.createProduct
+);
+
+router.post(
+  '/products/:id',
+  adminController.upload.single('image'),
+  adminController.updateProduct
+);
+
 
 router.get('/categories', adminController.categories);
 router.get('/categories/new', adminController.newCategory);
