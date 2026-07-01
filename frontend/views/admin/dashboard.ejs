@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/catalog.css">
+</head>
+<body class="dashboard-page">
+  <main class="dashboard-panel">
+    <div class="dashboard-hero">
+      <div>
+        <p class="eyebrow">Admin</p>
+        <h1>Dashboard</h1>
+        <p class="meta-copy">Welcome, <%= currentUser.first_name %>. You are signed in as <%= currentUser.email %>.</p>
+      </div>
+
+      <form action="/auth/logout" method="POST">
+        <button type="submit" class="danger-button">Logout</button>
+      </form>
+    </div>
+
+    <div class="dashboard-links">
+      <a href="/admin/products">Products</a>
+      <a href="/admin/categories">Categories</a>
+      <a href="/admin/orders">Orders</a>
+      <a href="/admin/users">Users</a>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/catalog.css">
+</head>
+<body>
+  <main class="page">
+    <header class="catalog-header">
+      <div>
+        <a href="/home" class="back-link">Home</a>
+        <h1>My Cart</h1>
+        <p>Review your selected school supplies.</p>
+      </div>
+
+      <div class="catalog-actions">
+        <a class="secondary-button" href="/shop">Continue shopping</a>
+        <form action="/auth/logout" method="POST">
+          <button type="submit" class="danger-button">Logout</button>
+        </form>
+      </div>
+    </header>
+
+    <section class="cart-panel">
+      <% if (items.length === 0) { %>
+        <p class="empty-message is-visible">Your cart is empty.</p>
+      <% } else { %>
+        <div class="cart-table-wrap">
+          <table class="cart-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>Quantity</th>
+                <th>Subtotal</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="cartItems">
+              <% items.forEach((item) => { %>
+                <tr
+                  data-item-id="<%= item.cart_item_id %>"
+                  data-price="<%= item.price %>"
+                  data-stock="<%= item.stock_quantity || 0 %>"
+                >
+                  <td><%= item.product_name %></td>
+                  <td>PHP <span class="item-price"><%= item.price.toFixed(2) %></span></td>
+                  <td><%= item.stock_quantity || 0 %></td>
+                  <td>
+                    <div class="quantity-controls">
+                      <button type="button" class="cart-action" data-action="decrease">-</button>
+                      <span class="item-quantity"><%= item.quantity %></span>
+                      <button type="button" class="cart-action" data-action="increase">+</button>
+                    </div>
+                  </td>
+                  <td>PHP <span class="item-subtotal"><%= item.subtotal.toFixed(2) %></span></td>
+                  <td>
+                    <button type="button" class="cart-action remove-button" data-action="remove">Remove</button>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="cart-summary">
+          <p id="cartMessage" aria-live="polite"></p>
+          <div>
+            <p>Total: PHP <strong id="cartTotal"><%= total.toFixed(2) %></strong></p>
+            <a class="button-link" href="/checkout">Checkout</a>
+          </div>
+        </div>
+      <% } %>
+    </section>
+  </main>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script>
+    $(function () {
+      function money(value) {
+        return Number(value).toFixed(2);
+      }
+
+      function renderCart(response) {
+        const itemsById = {};
+
+        response.items.forEach(function (item) {
+          itemsById[item.cart_item_id] = item;
+        });
+
+        $('#cartItems tr').each(function () {
+          const $row = $(this);
+          const itemId = Number($row.data('item-id'));
+          const item = itemsById[itemId];
+
+          if (!item) {
+            $row.remove();
+            return;
+          }
+
+          $row.find('.item-quantity').text(item.quantity);
+          $row.find('.item-subtotal').text(money(item.subtotal));
+        });
+
+        $('#cartTotal').text(money(response.total));
+
+        if (response.items.length === 0) {
+          $('.cart-panel').html('<p class="empty-message is-visible">Your cart is empty.</p>');
+        }
+      }
+
+      $('.cart-table').on('click', '.cart-action', function () {
+        const $button = $(this);
+        const $row = $button.closest('tr');
+        const itemId = $row.data('item-id');
+        const action = $button.data('action');
+        const $message = $('#cartMessage');
+
+        $button.prop('disabled', true);
+        $message.removeClass('is-error').text('');
+
+        $.ajax({
+          url: `/cart/items/${itemId}/${action}`,
+          method: 'POST',
+          dataType: 'json',
+          success: function (response) {
+            renderCart(response);
+          },
+          error: function (xhr) {
+            const response = xhr.responseJSON || {};
+            $message.addClass('is-error').text(response.message || 'Unable to update cart.');
+          },
+          complete: function () {
+            $button.prop('disabled', false);
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/catalog.css">
+</head>
+<body class="dashboard-page">
+  <main class="dashboard-panel">
+    <div class="dashboard-hero">
+      <div>
+        <p class="eyebrow">Customer</p>
+        <h1>Profile</h1>
+        <p class="meta-copy">Account details for your shopping session.</p>
+      </div>
+
+      <form action="/auth/logout" method="POST">
+        <button type="submit" class="danger-button">Logout</button>
+      </form>
+    </div>
+
+    <div class="dashboard-links">
+      <a href="/home">Home</a>
+      <a href="/shop">Shop</a>
+      <a href="/cart">Cart</a>
+      <a href="/orders">Order History</a>
+    </div>
+
+    <section class="cart-panel" style="margin-top: 18px;">
+      <p><strong>Name:</strong> <%= currentUser.first_name %> <%= currentUser.last_name %></p>
+      <p><strong>Email:</strong> <%= currentUser.email %></p>
+      <p><strong>Role:</strong> <%= currentUser.role %></p>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/catalog.css">
+</head>
+<body>
+  <main class="page">
+    <header class="catalog-header">
+      <div>
+        <a href="/shop" class="back-link">Continue shopping</a>
+        <h1>Order Confirmed</h1>
+        <p>Your order #<%= order.id %> has been placed.</p>
+      </div>
+    </header>
+
+    <section class="cart-panel">
+      <p>Status: <strong><%= order.order_status %></strong></p>
+      <p>Payment: <strong><%= order.payment_method %></strong></p>
+      <p>Total: PHP <strong><%= order.total.toFixed(2) %></strong></p>
+      <p>
+        <a href="/orders/<%= order.id %>">View order details</a>
+        <a href="/orders">Order history</a>
+      </p>
+    </section>
+  </main>
+</body>
+</html>

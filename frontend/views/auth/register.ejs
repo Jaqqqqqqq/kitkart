@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/catalog.css">
+</head>
+<body class="auth-page">
+  <main class="auth-panel">
+    <div>
+      <p class="eyebrow">Kitkart</p>
+      <h1>Create account</h1>
+      <p class="meta-copy">Sign up to order supplies, track purchases, and keep your details together.</p>
+    </div>
+
+    <% if (error) { %>
+      <p class="form-error"><%= error %></p>
+    <% } %>
+
+    <form action="/auth/register" method="POST" id="registerForm" class="auth-form" novalidate>
+      <div class="auth-grid">
+        <div class="form-field">
+          <label for="first_name">First Name</label>
+          <input id="first_name" name="first_name" type="text" value="<%= oldInput.first_name || '' %>" required>
+          <p class="field-help"></p>
+        </div>
+
+        <div class="form-field">
+          <label for="last_name">Last Name</label>
+          <input id="last_name" name="last_name" type="text" value="<%= oldInput.last_name || '' %>" required>
+          <p class="field-help"></p>
+        </div>
+
+        <div class="form-field span-2">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" value="<%= oldInput.email || '' %>" required>
+          <p class="field-help"></p>
+        </div>
+
+        <div class="form-field">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" required>
+          <p class="field-help"></p>
+        </div>
+
+        <div class="form-field">
+          <label for="confirm_password">Confirm Password</label>
+          <input id="confirm_password" name="confirm_password" type="password" required>
+          <p class="field-help"></p>
+        </div>
+
+        <div class="form-field span-2">
+          <label for="phone">Phone</label>
+          <input id="phone" name="phone" type="text" value="<%= oldInput.phone || '' %>">
+        </div>
+
+        <div class="form-field span-2">
+          <label for="address">Address</label>
+          <textarea id="address" name="address" rows="4"><%= oldInput.address || '' %></textarea>
+        </div>
+      </div>
+
+      <button type="submit">Register</button>
+    </form>
+
+    <p class="meta-copy">Already have an account? <a href="/auth/login">Login</a></p>
+  </main>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    $('#password').on('input', function () {
+      const len = this.value.length;
+      const strength = $('#password').closest('.form-field').find('.field-help');
+      strength.text(len < 6 ? 'Weak password' : len < 10 ? 'Medium password' : 'Strong password');
+    });
+  </script>
+</body>
+</html>

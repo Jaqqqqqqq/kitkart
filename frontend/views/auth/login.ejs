@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/catalog.css">
+</head>
+<body class="auth-page">
+  <main class="auth-panel">
+    <div>
+      <p class="eyebrow">Kitkart</p>
+      <h1>Sign in</h1>
+      <p class="meta-copy">Access your cart, orders, and the catalog in one place.</p>
+    </div>
+
+    <% if (error) { %>
+      <p class="form-error"><%= error %></p>
+    <% } %>
+
+    <form action="/auth/login" method="POST" id="loginForm" class="auth-form" novalidate>
+      <div class="form-field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" value="<%= oldInput.email || '' %>" required>
+        <p class="field-help"></p>
+      </div>
+
+      <div class="form-field">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" required>
+        <p class="field-help"></p>
+      </div>
+
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="showPassword">
+        <label class="form-check-label" for="showPassword">Show password</label>
+      </div>
+
+      <button type="submit">Login</button>
+    </form>
+
+    <p class="meta-copy">No account yet? <a href="/auth/register">Register</a></p>
+  </main>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    $('#showPassword').on('change', function () {
+      $('#password').attr('type', this.checked ? 'text' : 'password');
+    });
+  </script>
+</body>
+</html>

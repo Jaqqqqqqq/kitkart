@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.min.css">
+  <link rel="stylesheet" href="/css/catalog.css">
+</head>
+<body>
+  <main class="page shell">
+    <header class="catalog-header">
+      <div>
+        <a href="/home" class="back-link">Home</a>
+        <h1>School Supplies Catalog</h1>
+        <p>Browse notebooks, writing materials, art supplies, bags, and classroom essentials.</p>
+        <p class="catalog-meta"><a href="/cart">Cart</a> and <a href="/orders">Order history</a> are available from here.</p>
+      </div>
+
+      <div class="catalog-actions">
+        <a class="secondary-button" href="/profile">Profile</a>
+        <a class="secondary-button" href="/cart">Cart</a>
+        <a class="secondary-button" href="/orders">Orders</a>
+        <form action="/auth/logout" method="POST">
+          <button type="submit" class="danger-button">Logout</button>
+        </form>
+      </div>
+    </header>
+
+    <section class="filters" aria-label="Product filters">
+      <div class="search-field">
+        <label for="productSearch">Search</label>
+        <input id="productSearch" type="search" placeholder="Search school supplies">
+        <div id="searchSuggestions" class="search-suggestions" aria-label="Search suggestions"></div>
+      </div>
+
+      <div>
+        <label for="categoryFilter">Category</label>
+        <select id="categoryFilter">
+          <option value="">All categories</option>
+          <% categories.forEach((category) => { %>
+            <option value="<%= category.id %>"><%= category.category_name %></option>
+          <% }) %>
+        </select>
+      </div>
+    </section>
+
+    <section class="product-grid" id="productGrid">
+      <% products.forEach((product) => { %>
+        <article
+          class="product-card"
+          data-name="<%= product.product_name.toLowerCase() %>"
+          data-category-id="<%= product.category_id %>"
+        >
+          <a href="/products/<%= product.id %>" class="product-image">
+            <% if (product.image_url) { %>
+              <img src="<%= product.image_url %>" alt="<%= product.product_name %>" loading="lazy">
+            <% } %>
+            <span class="image-placeholder <%= product.image_url ? 'is-hidden' : '' %>">No image</span>
+          </a>
+
+          <div class="product-body">
+            <p class="category"><%= product.category_name %></p>
+            <h2><a href="/products/<%= product.id %>"><%= product.product_name %></a></h2>
+            <p class="price">PHP <%= Number(product.price).toFixed(2) %></p>
+            <p class="stock">Stock: <%= product.stock_quantity || 0 %></p>
+
+            <form class="add-to-cart-form" action="/cart/items" method="POST">
+              <input type="hidden" name="product_id" value="<%= product.id %>">
+              <input type="hidden" name="quantity" value="1">
+              <button type="submit" <%= Number(product.stock_quantity) < 1 ? 'disabled' : '' %>>
+                Add to Cart
+              </button>
+              <span class="cart-message" aria-live="polite"></span>
+            </form>
+          </div>
+        </article>
+      <% }) %>
+    </section>
+
+    <p id="emptyCatalogMessage" class="empty-message">No school supplies match your search.</p>
+  </main>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="/js/catalog.js"></script>
+</body>
+</html>

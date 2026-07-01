@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/catalog.css">
+</head>
+<body>
+  <main class="page">
+    <header class="catalog-header">
+      <div>
+        <a href="/shop/<%= review.product_id %>" class="back-link">Back to product</a>
+        <h1>Edit Review</h1>
+        <p><%= review.product_name %></p>
+      </div>
+    </header>
+
+    <section class="cart-panel">
+      <% if (error) { %>
+        <p class="form-error"><%= error %></p>
+      <% } %>
+
+      <form action="/reviews/<%= review.id %>/edit" method="POST" class="review-form">
+        <label for="rating">Rating</label>
+        <select id="rating" name="rating" required>
+          <% for (let rating = 5; rating >= 1; rating -= 1) { %>
+            <option value="<%= rating %>" <%= Number(review.rating) === rating ? 'selected' : '' %>>
+              <%= rating %> star<%= rating === 1 ? '' : 's' %>
+            </option>
+          <% } %>
+        </select>
+
+        <label for="review_text">Review</label>
+        <textarea id="review_text" name="review_text" rows="5" required><%= review.review_text || '' %></textarea>
+
+        <button type="submit">Save Review</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

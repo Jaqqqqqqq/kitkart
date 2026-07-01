@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/catalog.css">
+</head>
+<body>
+  <main class="page">
+    <header class="catalog-header">
+      <div>
+        <a href="/admin/dashboard" class="back-link">Dashboard</a>
+        <h1>All Orders</h1>
+      </div>
+    </header>
+
+    <section class="cart-panel">
+      <% if (orders.length === 0) { %>
+        <p class="empty-message is-visible">No orders found.</p>
+      <% } else { %>
+        <div class="cart-table-wrap">
+          <table class="cart-table">
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>Customer</th>
+                <th>Status</th>
+                <th>Payment</th>
+                <th>Items</th>
+                <th>Total</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% orders.forEach((order) => { %>
+                <tr>
+                  <td>#<%= order.id %></td>
+                  <td><%= order.first_name %> <%= order.last_name %><br><%= order.email %></td>
+                  <td><%= order.order_status %></td>
+                  <td><%= order.payment_method %></td>
+                  <td><%= order.item_count %></td>
+                  <td>PHP <%= order.total.toFixed(2) %></td>
+                  <td><a href="/admin/orders/<%= order.id %>">View</a></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+  </main>
+</body>
+</html>
