@@ -1,10 +1,8 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 
-const { pool } = require('../config/db');
-
-const USERNAME_COLUMN = 'email';
-const PASSWORD_COLUMN = 'password';
+const { User } = require('../config/sequelize');
+const userModel = require('../models/userModel');
 
 function wantsJson(req) {
   return req.xhr || req.headers.accept?.includes('application/json');
@@ -36,6 +34,39 @@ function getRegister(req, res) {
   res.render('auth/register', { title: 'Register', error: null, oldInput: {} });
 }
 
+function getForgotPassword(req, res) {
+  res.render('auth/forgot-password', {
+    title: 'Forgot Password',
+    error: null,
+    success: null,
+    oldInput: {},
+  });
+}
+
+async function postForgotPassword(req, res) {
+  try {
+    await userModel.resetPasswordByEmail(
+      req.body.email,
+      req.body.password,
+      req.body.confirm_password
+    );
+
+    return res.render('auth/forgot-password', {
+      title: 'Forgot Password',
+      error: null,
+      success: 'Password changed. You can now login.',
+      oldInput: {},
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).render('auth/forgot-password', {
+      title: 'Forgot Password',
+      error: error.message || 'Unable to change password.',
+      success: null,
+      oldInput: req.body,
+    });
+  }
+}
+
 async function postRegister(req, res) {
   const { first_name, last_name, email, password, confirm_password, phone, address } = req.body;
 
@@ -64,12 +95,9 @@ async function postRegister(req, res) {
   }
 
   try {
-    const [existingUsers] = await pool.execute(
-      `SELECT id FROM users WHERE ${USERNAME_COLUMN} = ? LIMIT 1`,
-      [email]
-    );
+    const existingUser = await User.findOne({ where: { email } });
 
-    if (existingUsers.length > 0) {
+    if (existingUser) {
       if (wantsJson(req)) {
         return res.status(409).json({
           success: false,
@@ -87,14 +115,20 @@ async function postRegister(req, res) {
     const hashedPassword = await bcrypt.hash(password, 12);
     const token = generateToken();
 
-    const [result] = await pool.execute(
-      `INSERT INTO users (first_name, last_name, ${USERNAME_COLUMN}, ${PASSWORD_COLUMN}, role, status, token, phone, address)
-       VALUES (?, ?, ?, ?, 'customer', 'active', ?, ?, ?)`,
-      [first_name, last_name, email, hashedPassword, token, phone || null, address || null]
-    );
+    const user = await User.create({
+      first_name,
+      last_name,
+      email,
+      password: hashedPassword,
+      role: 'customer',
+      status: 'active',
+      token,
+      phone: phone || null,
+      address: address || null,
+    });
 
     const sessionUser = {
-      id: result.insertId,
+      id: user.id,
       first_name,
       last_name,
       email,
@@ -141,15 +175,9 @@ async function postLogin(req, res) {
   }
 
   try {
-    const [users] = await pool.execute(
-      `SELECT id, first_name, last_name, ${USERNAME_COLUMN}, ${PASSWORD_COLUMN}, role, status
-       FROM users
-       WHERE ${USERNAME_COLUMN} = ?
-       LIMIT 1`,
-      [email]
-    );
+    const user = await User.findOne({ where: { email } });
 
-    if (users.length === 0) {
+    if (!user) {
       if (wantsJson(req)) {
         return res.status(401).json({ success: false, message: 'Invalid email or password.' });
       }
@@ -160,8 +188,6 @@ async function postLogin(req, res) {
         oldInput: req.body,
       });
     }
-
-    const user = users[0];
 
     if (user.status !== 'active') {
       if (wantsJson(req)) {
@@ -175,7 +201,7 @@ async function postLogin(req, res) {
       });
     }
 
-    const storedPassword = user[PASSWORD_COLUMN];
+    const storedPassword = user.password;
     let passwordMatches = false;
 
     if (storedPassword.startsWith('$2a$') || storedPassword.startsWith('$2b$') || storedPassword.startsWith('$2y$')) {
@@ -184,7 +210,7 @@ async function postLogin(req, res) {
       passwordMatches = password === storedPassword;
       if (passwordMatches) {
         const upgradedHash = await bcrypt.hash(password, 12);
-        await pool.execute(`UPDATE users SET ${PASSWORD_COLUMN} = ? WHERE id = ?`, [upgradedHash, user.id]);
+        await user.update({ password: upgradedHash });
       }
     }
 
@@ -202,13 +228,13 @@ async function postLogin(req, res) {
 
     const role = String(user.role || '').trim().toLowerCase();
     const token = generateToken();
-    await pool.execute('UPDATE users SET token = ? WHERE id = ?', [token, user.id]);
+    await user.update({ token });
 
     req.session.user = {
       id: user.id,
       first_name: user.first_name,
       last_name: user.last_name,
-      email: user[USERNAME_COLUMN],
+      email: user.email,
       role,
     };
 
@@ -241,11 +267,49 @@ function logout(req, res) {
   });
 }
 
+async function registerUser(req, res) {
+  req.body.confirm_password = req.body.confirm_password || req.body.password;
+  return postRegister(req, res);
+}
+
+async function loginUser(req, res) {
+  return postLogin(req, res);
+}
+
+async function logoutUser(req, res) {
+  const token = req.headers.authorization?.replace('Bearer ', '') || req.body.token;
+
+  try {
+    if (token) {
+      await User.update({ token: null }, { where: { token } });
+    }
+
+    req.session.destroy(() => {
+      res.clearCookie('connect.sid');
+      return res.status(200).json({
+        success: true,
+        message: 'Logout successful',
+      });
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: 'Logout failed.',
+    });
+  }
+}
+
 module.exports = {
   getRedirectUrlForRole,
+  getForgotPassword,
   getLogin,
   getRegister,
+  loginUser,
   postLogin,
+  postForgotPassword,
   postRegister,
+  registerUser,
   logout,
+  logoutUser,
 };

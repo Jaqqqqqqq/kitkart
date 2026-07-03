@@ -1,50 +1,41 @@
-const { pool } = require('../config/db');
+const { Cart, CartItem, Product } = require('../config/sequelize');
 
 async function getOrCreateCart(userId) {
-  const [carts] = await pool.execute(
-    'SELECT id FROM carts WHERE user_id = ? ORDER BY id ASC LIMIT 1',
-    [userId]
-  );
+  const [cart] = await Cart.findOrCreate({
+    where: { user_id: userId },
+    defaults: { user_id: userId },
+  });
 
-  if (carts.length > 0) {
-    return carts[0];
-  }
+  return cart.get({ plain: true });
+}
 
-  const [result] = await pool.execute('INSERT INTO carts (user_id) VALUES (?)', [userId]);
+function normalizeCartItems(items) {
+  return items.map((item) => {
+    const plainItem = item.get ? item.get({ plain: true }) : item;
+    const product = plainItem.Product;
+    const price = Number(product.price);
+    const quantity = Number(plainItem.quantity);
 
-  return {
-    id: result.insertId,
-  };
+    return {
+      cart_item_id: plainItem.id,
+      quantity,
+      product_id: product.id,
+      product_name: product.product_name,
+      price,
+      stock_quantity: product.stock_quantity,
+      subtotal: price * quantity,
+    };
+  });
 }
 
 async function getCartContents(userId) {
   const cart = await getOrCreateCart(userId);
-  const [items] = await pool.execute(
-    `SELECT
-       ci.id AS cart_item_id,
-       ci.quantity,
-       p.id AS product_id,
-       p.product_name,
-       p.price,
-       p.stock_quantity
-     FROM cart_items ci
-     INNER JOIN products p ON p.id = ci.product_id
-     WHERE ci.cart_id = ?
-     ORDER BY p.product_name ASC`,
-    [cart.id]
-  );
-
-  const normalizedItems = items.map((item) => {
-    const price = Number(item.price);
-    const quantity = Number(item.quantity);
-
-    return {
-      ...item,
-      price,
-      quantity,
-      subtotal: price * quantity,
-    };
+  const items = await CartItem.findAll({
+    where: { cart_id: cart.id },
+    include: [{ model: Product }],
   });
+
+  const normalizedItems = normalizeCartItems(items).sort((a, b) => a.product_name.localeCompare(b.product_name));
 
   return {
     cart,
@@ -56,19 +47,15 @@ async function getCartContents(userId) {
 async function addItem(userId, productId, quantity = 1) {
   const requestedQuantity = Math.max(Number(quantity) || 1, 1);
   const cart = await getOrCreateCart(userId);
+  const product = await Product.findByPk(productId);
 
-  const [products] = await pool.execute(
-    'SELECT id, stock_quantity FROM products WHERE id = ? LIMIT 1',
-    [productId]
-  );
-
-  if (products.length === 0) {
+  if (!product) {
     const error = new Error('Product not found.');
     error.statusCode = 404;
     throw error;
   }
 
-  const stockQuantity = Number(products[0].stock_quantity) || 0;
+  const stockQuantity = Number(product.stock_quantity) || 0;
 
   if (stockQuantity < 1) {
     const error = new Error('This product is out of stock.');
@@ -76,12 +63,14 @@ async function addItem(userId, productId, quantity = 1) {
     throw error;
   }
 
-  const [existingItems] = await pool.execute(
-    'SELECT id, quantity FROM cart_items WHERE cart_id = ? AND product_id = ? LIMIT 1',
-    [cart.id, productId]
-  );
+  const existingItem = await CartItem.findOne({
+    where: {
+      cart_id: cart.id,
+      product_id: productId,
+    },
+  });
 
-  const currentQuantity = existingItems.length > 0 ? Number(existingItems[0].quantity) : 0;
+  const currentQuantity = existingItem ? Number(existingItem.quantity) : 0;
   const nextQuantity = currentQuantity + requestedQuantity;
 
   if (nextQuantity > stockQuantity) {
@@ -90,42 +79,40 @@ async function addItem(userId, productId, quantity = 1) {
     throw error;
   }
 
-  if (existingItems.length > 0) {
-    await pool.execute('UPDATE cart_items SET quantity = ? WHERE id = ?', [
-      nextQuantity,
-      existingItems[0].id,
-    ]);
+  if (existingItem) {
+    await existingItem.update({ quantity: nextQuantity });
   } else {
-    await pool.execute(
-      'INSERT INTO cart_items (cart_id, product_id, quantity) VALUES (?, ?, ?)',
-      [cart.id, productId, requestedQuantity]
-    );
+    await CartItem.create({
+      cart_id: cart.id,
+      product_id: productId,
+      quantity: requestedQuantity,
+    });
   }
 
   return getCartContents(userId);
 }
 
 async function getCartItemForUser(userId, cartItemId) {
-  const [items] = await pool.execute(
-    `SELECT
-       ci.id,
-       ci.quantity,
-       p.stock_quantity
-     FROM cart_items ci
-     INNER JOIN carts c ON c.id = ci.cart_id
-     INNER JOIN products p ON p.id = ci.product_id
-     WHERE ci.id = ? AND c.user_id = ?
-     LIMIT 1`,
-    [cartItemId, userId]
-  );
+  const item = await CartItem.findOne({
+    where: { id: cartItemId },
+    include: [
+      { model: Cart, where: { user_id: userId } },
+      { model: Product, attributes: ['stock_quantity'] },
+    ],
+  });
 
-  if (items.length === 0) {
+  if (!item) {
     const error = new Error('Cart item not found.');
     error.statusCode = 404;
     throw error;
   }
 
-  return items[0];
+  const plainItem = item.get({ plain: true });
+  return {
+    id: plainItem.id,
+    quantity: plainItem.quantity,
+    stock_quantity: plainItem.Product.stock_quantity,
+  };
 }
 
 async function increaseItem(userId, cartItemId) {
@@ -139,7 +126,7 @@ async function increaseItem(userId, cartItemId) {
     throw error;
   }
 
-  await pool.execute('UPDATE cart_items SET quantity = ? WHERE id = ?', [nextQuantity, cartItemId]);
+  await CartItem.update({ quantity: nextQuantity }, { where: { id: cartItemId } });
 
   return getCartContents(userId);
 }
@@ -151,7 +138,7 @@ async function decreaseItem(userId, cartItemId) {
   if (nextQuantity < 1) {
     await removeItem(userId, cartItemId);
   } else {
-    await pool.execute('UPDATE cart_items SET quantity = ? WHERE id = ?', [nextQuantity, cartItemId]);
+    await CartItem.update({ quantity: nextQuantity }, { where: { id: cartItemId } });
   }
 
   return getCartContents(userId);
@@ -159,7 +146,7 @@ async function decreaseItem(userId, cartItemId) {
 
 async function removeItem(userId, cartItemId) {
   await getCartItemForUser(userId, cartItemId);
-  await pool.execute('DELETE FROM cart_items WHERE id = ?', [cartItemId]);
+  await CartItem.destroy({ where: { id: cartItemId } });
 
   return getCartContents(userId);
 }

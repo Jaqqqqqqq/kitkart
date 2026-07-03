@@ -91,10 +91,84 @@ async function removeItem(req, res) {
   }
 }
 
+async function getCart(req, res) {
+  try {
+    const cartData = await cartModel.getCartContents(req.user.id);
+
+    return res.status(200).json({
+      success: true,
+      result: cartData,
+    });
+  } catch (error) {
+    return handleCartError(req, res, error);
+  }
+}
+
+async function addToCart(req, res) {
+  try {
+    const cartData = await cartModel.addItem(req.user.id, req.body.product_id, req.body.quantity);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Item added to cart',
+      result: cartData,
+    });
+  } catch (error) {
+    return handleCartError(req, res, error);
+  }
+}
+
+async function increaseCartItem(req, res) {
+  try {
+    const cartData = await cartModel.increaseItem(req.user.id, req.params.id);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Cart item updated',
+      result: cartData,
+    });
+  } catch (error) {
+    return handleCartError(req, res, error);
+  }
+}
+
+async function decreaseCartItem(req, res) {
+  try {
+    const cartData = await cartModel.decreaseItem(req.user.id, req.params.id);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Cart item updated',
+      result: cartData,
+    });
+  } catch (error) {
+    return handleCartError(req, res, error);
+  }
+}
+
+async function removeCartItem(req, res) {
+  try {
+    const cartData = await cartModel.removeItem(req.user.id, req.params.id);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Item removed from cart',
+      result: cartData,
+    });
+  } catch (error) {
+    return handleCartError(req, res, error);
+  }
+}
+
 module.exports = {
   showCart,
   addItem,
+  addToCart,
+  decreaseCartItem,
+  getCart,
   increaseItem,
+  increaseCartItem,
   decreaseItem,
   removeItem,
+  removeCartItem,
 };

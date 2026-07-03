@@ -1,6 +1,7 @@
 const express = require('express');
 
-const { getRedirectUrlForRole, requireLogin } = require('../middleware/authMiddleware');
+const { getRedirectUrlForRole } = require('../controllers/authController');
+const { requireLogin } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 

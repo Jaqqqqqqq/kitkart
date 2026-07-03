@@ -1,16 +1,21 @@
-const { pool } = require('../config/db');
+const { Cart, CartItem, Order, OrderItem, Product, Review, sequelize } = require('../config/sequelize');
 
 const PAYMENT_METHODS = ['Cash on Delivery', 'GCash', 'PayMaya', 'Credit Card'];
 
 function normalizeOrderItems(items) {
   return items.map((item) => {
-    const price = Number(item.price);
-    const quantity = Number(item.quantity);
+    const plainItem = item.get ? item.get({ plain: true }) : item;
+    const product = plainItem.Product || {};
+    const price = Number(plainItem.price ?? product.price);
+    const quantity = Number(plainItem.quantity);
 
     return {
-      ...item,
-      price,
+      id: plainItem.id,
+      product_id: plainItem.product_id || product.id,
       quantity,
+      price,
+      status: plainItem.status,
+      product_name: product.product_name,
       subtotal: price * quantity,
     };
   });
@@ -21,23 +26,34 @@ function getOrderTotal(items) {
 }
 
 async function getCheckoutCart(userId) {
-  const [items] = await pool.execute(
-    `SELECT
-       ci.id AS cart_item_id,
-       ci.quantity,
-       p.id AS product_id,
-       p.product_name,
-       p.price,
-       p.stock_quantity
-     FROM carts c
-     INNER JOIN cart_items ci ON ci.cart_id = c.id
-     INNER JOIN products p ON p.id = ci.product_id
-     WHERE c.user_id = ?
-     ORDER BY p.product_name ASC`,
-    [userId]
-  );
+  const cart = await Cart.findOne({ where: { user_id: userId } });
 
-  const normalizedItems = normalizeOrderItems(items);
+  if (!cart) {
+    return { items: [], total: 0 };
+  }
+
+  const items = await CartItem.findAll({
+    where: { cart_id: cart.id },
+    include: [{ model: Product }],
+  });
+
+  const normalizedItems = items
+    .map((item) => {
+      const plainItem = item.get({ plain: true });
+      const price = Number(plainItem.Product.price);
+      const quantity = Number(plainItem.quantity);
+
+      return {
+        cart_item_id: plainItem.id,
+        quantity,
+        product_id: plainItem.Product.id,
+        product_name: plainItem.Product.product_name,
+        price,
+        stock_quantity: plainItem.Product.stock_quantity,
+        subtotal: price * quantity,
+      };
+    })
+    .sort((a, b) => a.product_name.localeCompare(b.product_name));
 
   return {
     items: normalizedItems,
@@ -52,26 +68,21 @@ async function createOrderFromCart(userId, paymentMethod) {
     throw error;
   }
 
-  const connection = await pool.getConnection();
+  return sequelize.transaction(async (transaction) => {
+    const cart = await Cart.findOne({ where: { user_id: userId }, transaction });
 
-  try {
-    await connection.beginTransaction();
+    if (!cart) {
+      const error = new Error('Your cart is empty.');
+      error.statusCode = 400;
+      throw error;
+    }
 
-    const [cartItems] = await connection.execute(
-      `SELECT
-         c.id AS cart_id,
-         ci.product_id,
-         ci.quantity,
-         p.product_name,
-         p.price,
-         p.stock_quantity
-       FROM carts c
-       INNER JOIN cart_items ci ON ci.cart_id = c.id
-       INNER JOIN products p ON p.id = ci.product_id
-       WHERE c.user_id = ?
-       FOR UPDATE`,
-      [userId]
-    );
+    const cartItems = await CartItem.findAll({
+      where: { cart_id: cart.id },
+      include: [{ model: Product }],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
 
     if (cartItems.length === 0) {
       const error = new Error('Your cart is empty.');
@@ -79,111 +90,117 @@ async function createOrderFromCart(userId, paymentMethod) {
       throw error;
     }
 
-    for (const item of cartItems) {
-      if (Number(item.quantity) > Number(item.stock_quantity)) {
-        const error = new Error(`${item.product_name} only has ${item.stock_quantity} item(s) available.`);
+    for (const cartItem of cartItems) {
+      const plainItem = cartItem.get({ plain: true });
+
+      if (Number(plainItem.quantity) > Number(plainItem.Product.stock_quantity)) {
+        const error = new Error(`${plainItem.Product.product_name} only has ${plainItem.Product.stock_quantity} item(s) available.`);
         error.statusCode = 400;
         throw error;
       }
     }
 
-    const [orderResult] = await connection.execute(
-      `INSERT INTO orders (user_id, payment_method, order_status)
-       VALUES (?, ?, 'Pending')`,
-      [userId, paymentMethod]
+    const order = await Order.create(
+      {
+        user_id: userId,
+        payment_method: paymentMethod,
+      },
+      { transaction }
     );
 
-    const orderId = orderResult.insertId;
+    for (const cartItem of cartItems) {
+      const plainItem = cartItem.get({ plain: true });
 
-    for (const item of cartItems) {
-      await connection.execute(
-        `INSERT INTO order_items (order_id, product_id, quantity, price)
-         VALUES (?, ?, ?, ?)`,
-        [orderId, item.product_id, item.quantity, item.price]
+      await OrderItem.create(
+        {
+          order_id: order.id,
+          product_id: plainItem.product_id,
+          quantity: plainItem.quantity,
+          price: plainItem.Product.price,
+          status: 'Pending',
+        },
+        { transaction }
       );
 
-      await connection.execute(
-        `UPDATE products
-         SET stock_quantity = stock_quantity - ?
-         WHERE id = ?`,
-        [item.quantity, item.product_id]
-      );
+      await Product.decrement('stock_quantity', {
+        by: Number(plainItem.quantity),
+        where: { id: plainItem.product_id },
+        transaction,
+      });
     }
 
-    await connection.execute(
-      `DELETE ci
-       FROM cart_items ci
-       INNER JOIN carts c ON c.id = ci.cart_id
-       WHERE c.user_id = ?`,
-      [userId]
-    );
+    await CartItem.destroy({ where: { cart_id: cart.id }, transaction });
 
-    await connection.commit();
-
-    return orderId;
-  } catch (error) {
-    await connection.rollback();
-    throw error;
-  } finally {
-    connection.release();
-  }
+    return order.id;
+  });
 }
 
 async function getOrdersForUser(userId) {
-  const [orders] = await pool.execute(
-    `SELECT
-       o.id,
-       o.payment_method,
-       o.order_status,
-       o.created_at,
-       COALESCE(SUM(oi.quantity * oi.price), 0) AS total,
-       COUNT(oi.id) AS item_count
-     FROM orders o
-     LEFT JOIN order_items oi ON oi.order_id = o.id
-     WHERE o.user_id = ?
-     GROUP BY o.id, o.payment_method, o.order_status, o.created_at
-     ORDER BY o.created_at DESC, o.id DESC`,
-    [userId]
-  );
+  const orders = await Order.findAll({
+    where: { user_id: userId },
+    include: [{ model: OrderItem, attributes: ['id', 'quantity', 'price'] }],
+    order: [
+      ['created_at', 'DESC'],
+      ['id', 'DESC'],
+    ],
+  });
 
-  return orders.map((order) => ({
-    ...order,
-    total: Number(order.total),
-    item_count: Number(order.item_count),
-  }));
+  return orders.map((order) => {
+    const plainOrder = order.get({ plain: true });
+    const items = plainOrder.OrderItems || [];
+
+    return {
+      id: plainOrder.id,
+      payment_method: plainOrder.payment_method,
+      created_at: plainOrder.created_at,
+      total: items.reduce((sum, item) => sum + Number(item.quantity) * Number(item.price), 0),
+      item_count: items.length,
+    };
+  });
 }
 
 async function getOrderForUser(userId, orderId) {
-  const [orders] = await pool.execute(
-    `SELECT id, payment_method, order_status, created_at
-     FROM orders
-     WHERE id = ? AND user_id = ?
-     LIMIT 1`,
-    [orderId, userId]
-  );
+  const order = await Order.findOne({
+    where: { id: orderId, user_id: userId },
+    include: [
+      {
+        model: OrderItem,
+        include: [{ model: Product, attributes: ['product_name'] }],
+      },
+    ],
+  });
 
-  if (orders.length === 0) {
+  if (!order) {
     return null;
   }
 
-  const [items] = await pool.execute(
-    `SELECT
-       oi.product_id,
-       oi.quantity,
-       oi.price,
-       p.product_name
-     FROM order_items oi
-     INNER JOIN products p ON p.id = oi.product_id
-     WHERE oi.order_id = ?
-     ORDER BY p.product_name ASC`,
-    [orderId]
+  const plainOrder = order.get({ plain: true });
+  const normalizedItems = normalizeOrderItems(plainOrder.OrderItems || [])
+    .sort((a, b) => a.product_name.localeCompare(b.product_name));
+  const productIds = normalizedItems.map((item) => item.product_id);
+  const reviews = await Review.findAll({
+    where: {
+      user_id: userId,
+      order_id: plainOrder.id,
+      product_id: productIds,
+    },
+    attributes: ['id', 'product_id'],
+  });
+  const reviewByProductId = new Map(
+    reviews.map((review) => {
+      const item = review.get({ plain: true });
+      return [Number(item.product_id), item.id];
+    })
   );
 
-  const normalizedItems = normalizeOrderItems(items);
-
   return {
-    ...orders[0],
-    items: normalizedItems,
+    id: plainOrder.id,
+    payment_method: plainOrder.payment_method,
+    created_at: plainOrder.created_at,
+    items: normalizedItems.map((item) => ({
+      ...item,
+      review_id: reviewByProductId.get(Number(item.product_id)) || null,
+    })),
     total: getOrderTotal(normalizedItems),
   };
 }

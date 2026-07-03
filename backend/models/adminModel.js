@@ -1,14 +1,15 @@
-const { pool } = require('../config/db');
-const { Category, Product, User } = require('../config/sequelize');
+const { Category, Order, OrderItem, Product, ProductImage, User } = require('../config/sequelize');
 
-function normalizeProductInput(input) {
+const ORDER_ITEM_STATUSES = ['Pending', 'Shipped', 'Delivered', 'Cancelled'];
+
+function normalizeProductInput(input, mainImage = null) {
   return {
     category_id: Number(input.category_id),
     product_name: String(input.product_name || '').trim(),
     description: String(input.description || '').trim() || null,
     price: Number(input.price),
     stock_quantity: Number(input.stock_quantity),
-    image: String(input.image || '').trim() || null,
+    image: mainImage || null,
   };
 }
 
@@ -40,66 +41,51 @@ function validateCategory(category) {
 }
 
 async function getAllOrders() {
-  const [orders] = await pool.execute(
-    `SELECT
-       o.id,
-       o.payment_method,
-       o.order_status,
-       o.created_at,
-       u.first_name,
-       u.last_name,
-       u.email,
-       COALESCE(SUM(oi.quantity * oi.price), 0) AS total,
-       COUNT(oi.id) AS item_count
-     FROM orders o
-     INNER JOIN users u ON u.id = o.user_id
-     LEFT JOIN order_items oi ON oi.order_id = o.id
-     GROUP BY o.id, o.payment_method, o.order_status, o.created_at, u.first_name, u.last_name, u.email
-     ORDER BY o.created_at DESC, o.id DESC`
-  );
+  const orders = await Order.findAll({
+    include: [
+      { model: User, attributes: ['first_name', 'last_name', 'email'] },
+      { model: OrderItem, attributes: ['id', 'quantity', 'price'] },
+    ],
+    order: [
+      ['created_at', 'DESC'],
+      ['id', 'DESC'],
+    ],
+  });
 
-  return orders.map((order) => ({
-    ...order,
-    total: Number(order.total),
-    item_count: Number(order.item_count),
-  }));
+  return orders.map((order) => {
+    const plainOrder = order.get({ plain: true });
+    const items = plainOrder.OrderItems || [];
+
+    return {
+      id: plainOrder.id,
+      payment_method: plainOrder.payment_method,
+      created_at: plainOrder.created_at,
+      first_name: plainOrder.User.first_name,
+      last_name: plainOrder.User.last_name,
+      email: plainOrder.User.email,
+      total: items.reduce((sum, item) => sum + Number(item.quantity) * Number(item.price), 0),
+      item_count: items.length,
+    };
+  });
 }
 
 async function getOrderById(orderId) {
-  const [orders] = await pool.execute(
-    `SELECT
-       o.id,
-       o.payment_method,
-       o.order_status,
-       o.created_at,
-       u.first_name,
-       u.last_name,
-       u.email
-     FROM orders o
-     INNER JOIN users u ON u.id = o.user_id
-     WHERE o.id = ?
-     LIMIT 1`,
-    [orderId]
-  );
+  const order = await Order.findByPk(orderId, {
+    include: [
+      { model: User, attributes: ['first_name', 'last_name', 'email'] },
+      {
+        model: OrderItem,
+        include: [{ model: Product, attributes: ['product_name'] }],
+      },
+    ],
+  });
 
-  if (orders.length === 0) {
+  if (!order) {
     return null;
   }
 
-  const [items] = await pool.execute(
-    `SELECT
-       oi.product_id,
-       oi.quantity,
-       oi.price,
-       p.product_name
-     FROM order_items oi
-     INNER JOIN products p ON p.id = oi.product_id
-     WHERE oi.order_id = ?
-     ORDER BY p.product_name ASC`,
-    [orderId]
-  );
-
-  const normalizedItems = items.map((item) => {
+  const plainOrder = order.get({ plain: true });
+  const normalizedItems = (plainOrder.OrderItems || []).map((item) => {
     const price = Number(item.price);
     const quantity = Number(item.quantity);
 
@@ -108,11 +94,17 @@ async function getOrderById(orderId) {
       price,
       quantity,
       subtotal: price * quantity,
+      product_name: item.Product.product_name,
     };
-  });
+  }).sort((a, b) => a.product_name.localeCompare(b.product_name));
 
   return {
-    ...orders[0],
+    id: plainOrder.id,
+    payment_method: plainOrder.payment_method,
+    created_at: plainOrder.created_at,
+    first_name: plainOrder.User.first_name,
+    last_name: plainOrder.User.last_name,
+    email: plainOrder.User.email,
     items: normalizedItems,
     total: normalizedItems.reduce((sum, item) => sum + item.subtotal, 0),
   };
@@ -141,15 +133,28 @@ async function getProductById(productId) {
 
   const plainProduct = product.get({ plain: true });
 
+  const images = await ProductImage.findAll({
+    where: { product_id: productId },
+    attributes: ['id', 'image_path'],
+    order: [['id', 'ASC']],
+  });
+
   return {
     ...plainProduct,
     price: Number(plainProduct.price),
     stock_quantity: Number(plainProduct.stock_quantity),
+    images: images.map((image) => image.get({ plain: true })),
   };
 }
 
-async function createProduct(input) {
-  const product = normalizeProductInput(input);
+async function addProductImages(productId, images = []) {
+  for (const image of images) {
+    await ProductImage.create({ product_id: productId, image_path: image });
+  }
+}
+
+async function createProduct(input, options = {}) {
+  const product = normalizeProductInput(input, options.mainImage);
   const error = validateProduct(product);
 
   if (error) {
@@ -158,20 +163,66 @@ async function createProduct(input) {
     throw validationError;
   }
 
-  await Product.create(product);
+  if (!product.image) {
+    const validationError = new Error('Main image is required.');
+    validationError.statusCode = 400;
+    throw validationError;
+  }
+
+  const createdProduct = await Product.create(product);
+  await addProductImages(createdProduct.id, options.galleryImages);
 }
 
-async function updateProduct(productId, input) {
-  const product = normalizeProductInput(input);
+function normalizeRemoveImageIds(value) {
+  if (!value) {
+    return [];
+  }
+
+  return (Array.isArray(value) ? value : [value])
+    .map((id) => Number(id))
+    .filter((id) => Number.isInteger(id) && id > 0);
+}
+
+async function updateProduct(productId, input, options = {}) {
+  const existingProduct = await Product.findByPk(productId);
+
+  if (!existingProduct) {
+    const error = new Error('Product not found.');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const removeMainImage = input.remove_main_image === '1';
+  const nextMainImage = options.mainImage || (removeMainImage ? null : existingProduct.image);
+  const product = normalizeProductInput(input, nextMainImage);
   const error = validateProduct(product);
 
   if (error) {
     const validationError = new Error(error);
+    validationError.statusCode = 400;
+    throw validationError;
+  }
+
+  if (!product.image) {
+    const validationError = new Error('Main image is required.');
     validationError.statusCode = 400;
     throw validationError;
   }
 
   await Product.update(product, { where: { id: productId } });
+
+  const removeImageIds = normalizeRemoveImageIds(input.remove_gallery_image_ids);
+
+  if (removeImageIds.length > 0) {
+    await ProductImage.destroy({
+      where: {
+        id: removeImageIds,
+        product_id: productId,
+      },
+    });
+  }
+
+  await addProductImages(productId, options.galleryImages);
 }
 
 async function deleteProduct(productId) {
@@ -232,6 +283,27 @@ async function getUsers() {
   return users.map((user) => user.get({ plain: true }));
 }
 
+async function getProductSalesSummary() {
+  const products = await Product.findAll({
+    include: [{ model: OrderItem, attributes: ['quantity', 'price'] }],
+    order: [['product_name', 'ASC']],
+  });
+
+  return products
+    .map((product) => {
+      const plainProduct = product.get({ plain: true });
+      const items = plainProduct.OrderItems || [];
+
+      return {
+        id: plainProduct.id,
+        product_name: plainProduct.product_name,
+        units_sold: items.reduce((sum, item) => sum + Number(item.quantity), 0),
+        total_sales: items.reduce((sum, item) => sum + Number(item.quantity) * Number(item.price), 0),
+      };
+    })
+    .sort((a, b) => b.units_sold - a.units_sold || a.product_name.localeCompare(b.product_name));
+}
+
 async function updateUserRole(userId, role) {
   if (!['admin', 'customer'].includes(role)) {
     const error = new Error('Please select a valid role.');
@@ -252,6 +324,25 @@ async function updateUserStatus(userId, status) {
   await User.update({ status }, { where: { id: userId } });
 }
 
+async function updateOrderItemStatus(itemId, status) {
+  if (!ORDER_ITEM_STATUSES.includes(status)) {
+    const error = new Error('Please select a valid item status.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+    const [affectedRows] = await OrderItem.update({ status }, { where: { id: itemId } });
+
+    if (affectedRows === 0) {
+      const error = new Error('Order item not found.');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    return affectedRows;
+
+}
+
 module.exports = {
   createCategory,
   createProduct,
@@ -263,9 +354,11 @@ module.exports = {
   getOrderById,
   getProductById,
   getProducts,
+  getProductSalesSummary,
   getUsers,
   updateCategory,
   updateProduct,
   updateUserRole,
   updateUserStatus,
+  updateOrderItemStatus
 };

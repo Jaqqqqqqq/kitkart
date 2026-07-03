@@ -1,4 +1,4 @@
-const { pool } = require('../config/db');
+const { Order, OrderItem, Product, Review, User } = require('../config/sequelize');
 
 function normalizeRating(rating) {
   const value = Number(rating);
@@ -11,70 +11,69 @@ function normalizeRating(rating) {
 }
 
 async function getReviewsForProduct(productId) {
-  const [reviews] = await pool.execute(
-    `SELECT
-       r.id,
-       r.user_id,
-       r.product_id,
-       r.order_id,
-       r.rating,
-       r.review_text,
-       r.created_at,
-       u.first_name,
-       u.last_name
-     FROM reviews r
-     INNER JOIN users u ON u.id = r.user_id
-     WHERE r.product_id = ?
-     ORDER BY r.created_at DESC, r.id DESC`,
-    [productId]
-  );
+  const reviews = await Review.findAll({
+    where: { product_id: productId },
+    include: [{ model: User, attributes: ['first_name', 'last_name'] }],
+    order: [
+      ['created_at', 'DESC'],
+      ['id', 'DESC'],
+    ],
+  });
 
-  return reviews;
+  return reviews.map((review) => {
+    const item = review.get({ plain: true });
+
+    return {
+      ...item,
+      first_name: item.User.first_name,
+      last_name: item.User.last_name,
+    };
+  });
 }
 
 async function getRatingSummary(productId) {
-  const [rows] = await pool.execute(
-    `SELECT
-       COALESCE(AVG(rating), 0) AS average_rating,
-       COUNT(id) AS review_count
-     FROM reviews
-     WHERE product_id = ?`,
-    [productId]
-  );
+  const reviews = await Review.findAll({
+    where: { product_id: productId },
+    attributes: ['rating'],
+  });
+
+  const reviewCount = reviews.length;
+  const ratingTotal = reviews.reduce((sum, review) => sum + Number(review.rating), 0);
 
   return {
-    average_rating: Number(rows[0].average_rating),
-    review_count: Number(rows[0].review_count),
+    average_rating: reviewCount > 0 ? ratingTotal / reviewCount : 0,
+    review_count: reviewCount,
   };
 }
 
 async function getPurchasedOrderForProduct(userId, productId) {
-  const [orders] = await pool.execute(
-    `SELECT o.id
-     FROM orders o
-     INNER JOIN order_items oi ON oi.order_id = o.id
-     WHERE o.user_id = ?
-       AND oi.product_id = ?
-       AND o.order_status <> 'Cancelled'
-     ORDER BY o.created_at DESC, o.id DESC
-     LIMIT 1`,
-    [userId, productId]
-  );
+  const order = await Order.findOne({
+    where: { user_id: userId },
+    include: [
+      {
+        model: OrderItem,
+        where: { product_id: productId, status: 'Delivered' },
+      },
+    ],
+    order: [
+      ['created_at', 'DESC'],
+      ['id', 'DESC'],
+    ],
+  });
 
-  return orders[0] || null;
+  return order ? order.get({ plain: true }) : null;
 }
 
 async function getUserReviewForProduct(userId, productId) {
-  const [reviews] = await pool.execute(
-    `SELECT id, user_id, product_id, order_id, rating, review_text, created_at
-     FROM reviews
-     WHERE user_id = ? AND product_id = ?
-     ORDER BY created_at DESC, id DESC
-     LIMIT 1`,
-    [userId, productId]
-  );
+  const review = await Review.findOne({
+    where: { user_id: userId, product_id: productId },
+    order: [
+      ['created_at', 'DESC'],
+      ['id', 'DESC'],
+    ],
+  });
 
-  return reviews[0] || null;
+  return review ? review.get({ plain: true }) : null;
 }
 
 async function canUserReviewProduct(userId, productId) {
@@ -83,9 +82,11 @@ async function canUserReviewProduct(userId, productId) {
     getUserReviewForProduct(userId, productId),
   ]);
 
+  const deliveredItem = order?.OrderItems?.find((item) => item.status === 'Delivered');
+
   return {
-    canReview: Boolean(order) && !existingReview,
-    order,
+    canReview: Boolean(deliveredItem) && !existingReview,
+    order: deliveredItem ? order : null,
     existingReview,
   };
 }
@@ -109,7 +110,7 @@ async function createReview(userId, productId, rating, reviewText) {
   const eligibility = await canUserReviewProduct(userId, productId);
 
   if (!eligibility.order) {
-    const error = new Error('You can only review products you have purchased.');
+    const error = new Error('You can only review products after they are delivered.');
     error.statusCode = 403;
     throw error;
   }
@@ -120,32 +121,30 @@ async function createReview(userId, productId, rating, reviewText) {
     throw error;
   }
 
-  await pool.execute(
-    `INSERT INTO reviews (user_id, product_id, order_id, rating, review_text)
-     VALUES (?, ?, ?, ?, ?)`,
-    [userId, productId, eligibility.order.id, normalizedRating, cleanReviewText]
-  );
+  await Review.create({
+    user_id: userId,
+    product_id: productId,
+    order_id: eligibility.order.id,
+    rating: normalizedRating,
+    review_text: cleanReviewText,
+  });
 }
 
 async function getReviewForUser(reviewId, userId) {
-  const [reviews] = await pool.execute(
-    `SELECT
-       r.id,
-       r.user_id,
-       r.product_id,
-       r.order_id,
-       r.rating,
-       r.review_text,
-       r.created_at,
-       p.product_name
-     FROM reviews r
-     INNER JOIN products p ON p.id = r.product_id
-     WHERE r.id = ? AND r.user_id = ?
-     LIMIT 1`,
-    [reviewId, userId]
-  );
+  const review = await Review.findOne({
+    where: { id: reviewId, user_id: userId },
+    include: [{ model: Product, attributes: ['product_name'] }],
+  });
 
-  return reviews[0] || null;
+  if (!review) {
+    return null;
+  }
+
+  const item = review.get({ plain: true });
+  return {
+    ...item,
+    product_name: item.Product.product_name,
+  };
 }
 
 async function updateReview(reviewId, userId, rating, reviewText) {
@@ -172,11 +171,9 @@ async function updateReview(reviewId, userId, rating, reviewText) {
     throw error;
   }
 
-  await pool.execute(
-    `UPDATE reviews
-     SET rating = ?, review_text = ?
-     WHERE id = ? AND user_id = ?`,
-    [normalizedRating, cleanReviewText, reviewId, userId]
+  await Review.update(
+    { rating: normalizedRating, review_text: cleanReviewText },
+    { where: { id: reviewId, user_id: userId } }
   );
 
   return review.product_id;
@@ -191,9 +188,35 @@ async function deleteReview(reviewId, userId) {
     throw error;
   }
 
-  await pool.execute('DELETE FROM reviews WHERE id = ? AND user_id = ?', [reviewId, userId]);
+  await Review.destroy({ where: { id: reviewId, user_id: userId } });
 
   return review.product_id;
+}
+
+async function getReviewsForAdmin() {
+  const reviews = await Review.findAll({
+    include: [
+      { model: User, attributes: ['first_name', 'last_name', 'email'] },
+      { model: Product, attributes: ['product_name'] },
+      { model: Order, attributes: ['id'] },
+    ],
+    order: [
+      ['created_at', 'DESC'],
+      ['id', 'DESC'],
+    ],
+  });
+
+  return reviews.map((review) => {
+    const item = review.get({ plain: true });
+
+    return {
+      ...item,
+      customer_name: `${item.User.first_name} ${item.User.last_name}`,
+      customer_email: item.User.email,
+      product_name: item.Product.product_name,
+      order_id: item.Order.id,
+    };
+  });
 }
 
 module.exports = {
@@ -202,6 +225,7 @@ module.exports = {
   canUserReviewProduct,
   createReview,
   getReviewForUser,
+  getReviewsForAdmin,
   updateReview,
   deleteReview,
 };

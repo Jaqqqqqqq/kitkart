@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %></title>
+  <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.min.css">
   <link rel="stylesheet" href="/css/catalog.css">
 </head>
 <body>
@@ -21,7 +22,7 @@
         <p class="empty-message is-visible">No products found.</p>
       <% } else { %>
         <div class="cart-table-wrap">
-          <table class="cart-table">
+          <table id="productsTable" class="cart-table display">
             <thead>
               <tr>
                 <th>Name</th>
@@ -34,15 +35,29 @@
             </thead>
             <tbody>
               <% products.forEach((product) => { %>
-                <tr>
+                <tr id="product-row-<%= product.id %>">
                   <td><%= product.product_name %></td>
                   <td><%= product.category_name %></td>
                   <td>PHP <%= product.price.toFixed(2) %></td>
                   <td><%= product.stock_quantity %></td>
-                  <td><%= product.image || '-' %></td>
+                  <td>
+                    <% if (product.image) { %>
+                      <img
+                        class="table-image"
+                        src="<%= product.image.startsWith('/') || product.image.startsWith('http') ? product.image : '/images/' + product.image %>"
+                        alt="<%= product.product_name %>">
+                    <% } else { %>
+                      -
+                    <% } %>
+                  </td>
                   <td>
                     <a href="/admin/products/<%= product.id %>/edit">Edit</a>
-                    <form action="/admin/products/<%= product.id %>/delete" method="POST" class="inline-form">
+                    <form
+                      action="/admin/products/<%= product.id %>/delete"
+                      method="POST"
+                      class="inline-form js-api-delete"
+                      data-api-url="/api/v1/products/<%= product.id %>"
+                      data-row="#product-row-<%= product.id %>">
                       <button type="submit" class="remove-button">Delete</button>
                     </form>
                   </td>
@@ -54,5 +69,8 @@
       <% } %>
     </section>
   </main>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
+  <script src="/js/admin-crud.js"></script>
 </body>
 </html>

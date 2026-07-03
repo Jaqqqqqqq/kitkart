@@ -12,7 +12,6 @@
       <div>
         <a href="/orders" class="back-link">Back to order history</a>
         <h1>Order #<%= order.id %></h1>
-        <p>Status: <%= order.order_status %></p>
       </div>
     </header>
 
@@ -27,6 +26,8 @@
               <th>Price</th>
               <th>Quantity</th>
               <th>Subtotal</th>
+              <th>Status</th>
+              <th>Review</th>
             </tr>
           </thead>
           <tbody>
@@ -36,6 +37,16 @@
                 <td>PHP <%= item.price.toFixed(2) %></td>
                 <td><%= item.quantity %></td>
                 <td>PHP <%= item.subtotal.toFixed(2) %></td>
+                <td><%= item.status %></td>
+                <td>
+                  <% if (item.review_id) { %>
+                    <a href="/reviews/<%= item.review_id %>/edit">Edit review</a>
+                  <% } else if (item.status === 'Delivered') { %>
+                    <a href="/shop/<%= item.product_id %>">Write review</a>
+                  <% } else { %>
+                    <span class="muted">Available after delivery</span>
+                  <% } %>
+                </td>
               </tr>
             <% }) %>
           </tbody>

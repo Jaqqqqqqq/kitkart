@@ -20,16 +20,32 @@
         <p class="form-error"><%= error %></p>
       <% } %>
 
-      <form action="<%= action %>" method="POST" class="admin-form">
-        <label for="category_name">Category name</label>
-        <input id="category_name" name="category_name" value="<%= category.category_name %>" required>
+      <form
+        action="<%= action %>"
+        method="POST"
+        class="admin-form js-admin-form js-api-form"
+        id="categoryForm"
+        data-api-url="<%= category.id ? '/api/v1/categories/' + category.id : '/api/v1/categories' %>"
+        data-api-method="<%= category.id ? 'PUT' : 'POST' %>"
+        data-redirect="/admin/categories"
+        novalidate>
+        <div class="form-field">
+          <label for="category_name">Category name</label>
+          <input id="category_name" name="category_name" value="<%= category.category_name %>" required>
+          <p class="field-help"></p>
+        </div>
 
-        <label for="description">Description</label>
-        <textarea id="description" name="description" rows="4"><%= category.description %></textarea>
+        <div class="form-field">
+          <label for="description">Description</label>
+          <textarea id="description" name="description" rows="4"><%= category.description %></textarea>
+          <p class="field-help"></p>
+        </div>
 
         <button type="submit">Save category</button>
       </form>
     </section>
   </main>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="/js/admin-crud.js"></script>
 </body>
 </html>

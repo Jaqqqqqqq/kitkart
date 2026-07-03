@@ -3,34 +3,28 @@ const multer = require('multer');
 
 const adminController = require('../controllers/adminController');
 const dashboardController = require('../controllers/dashboardController');
-const { requireAdmin } = require('../middleware/authMiddleware');
+const { requireRole } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 const upload = multer({
-  dest: 'public/images/',
+  dest: 'frontend/public/images/',
 });
+const productUpload = upload.any();
 
-router.use(requireAdmin);
+router.use(requireRole('admin', 'Only administrators can access this page.'));
 
 router.get('/dashboard', dashboardController.dashboard);
+router.get('/charts', dashboardController.charts);
 router.get('/orders', adminController.orders);
 router.get('/orders/:id', adminController.orderDetails);
+router.get('/reviews', adminController.reviews);
 router.get('/products', adminController.products);
 router.get('/products/new', adminController.newProduct);
 router.get('/products/:id/edit', adminController.editProduct);
 router.post('/products/:id/delete', adminController.deleteProduct);
-router.post(
-  '/products',
-  upload.single('image'),
-  adminController.createProduct
-);
-
-router.post(
-  '/products/:id',
-  upload.single('image'),
-  adminController.updateProduct
-);
-
+router.post('/products', productUpload, adminController.createProduct);
+router.post('/products/:id', productUpload, adminController.updateProduct);
+router.put('/orders/items/:itemId/status',adminController.updateOrderItemStatus);
 
 router.get('/categories', adminController.categories);
 router.get('/categories/new', adminController.newCategory);

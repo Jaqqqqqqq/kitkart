@@ -1,6 +1,94 @@
 $(function () {
+  const INITIAL_BATCH_SIZE = 8;
+  const SCROLL_BATCH_SIZE = 6;
+  const cardSelector = '.product-card';
+  let observer = null;
+
   function showCartMessage($message, text, isError) {
     $message.toggleClass('is-error', Boolean(isError)).text(text || '');
+  }
+
+  function getVisibleCards() {
+    return $(cardSelector).filter(function () {
+      return !$(this).hasClass('is-filtered-out');
+    });
+  }
+
+  function countRevealedCards() {
+    return getVisibleCards().filter(function () {
+      return !$(this).hasClass('is-scroll-hidden');
+    }).length;
+  }
+
+  function updateInfiniteScrollStatus(visibleCount) {
+    const total = getVisibleCards().length;
+    const $status = $('#infiniteScrollStatus');
+
+    if (!total) {
+      $status.text('');
+      return;
+    }
+
+    if (visibleCount >= total) {
+      $status.text(`Showing all ${total} items.`);
+      return;
+    }
+
+    $status.text(`Showing ${visibleCount} of ${total} items. Scroll for more.`);
+  }
+
+  function revealNextBatch(batchSize) {
+    const $hiddenCards = getVisibleCards().filter('.is-scroll-hidden').slice(0, batchSize);
+    $hiddenCards.removeClass('is-scroll-hidden');
+
+    const visibleCount = countRevealedCards();
+    const total = getVisibleCards().length;
+    const hasMore = visibleCount < total;
+
+    $('#infiniteScrollSentinel').toggleClass('is-hidden', !hasMore);
+    updateInfiniteScrollStatus(visibleCount);
+
+    return hasMore;
+  }
+
+  function resetInfiniteScroll() {
+    const $cards = getVisibleCards();
+
+    $cards.addClass('is-scroll-hidden');
+    $cards.slice(0, INITIAL_BATCH_SIZE).removeClass('is-scroll-hidden');
+
+    const visibleCount = countRevealedCards();
+    const total = $cards.length;
+    const hasMore = visibleCount < total;
+
+    $('#infiniteScrollSentinel').toggleClass('is-hidden', !hasMore);
+    updateInfiniteScrollStatus(visibleCount);
+  }
+
+  function setupInfiniteScrollObserver() {
+    if (observer) {
+      observer.disconnect();
+    }
+
+    const sentinel = document.getElementById('infiniteScrollSentinel');
+
+    if (!sentinel || !('IntersectionObserver' in window)) {
+      return;
+    }
+
+    observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          revealNextBatch(SCROLL_BATCH_SIZE);
+        }
+      });
+    }, {
+      root: null,
+      rootMargin: '120px',
+      threshold: 0,
+    });
+
+    observer.observe(sentinel);
   }
 
   function filterProducts() {
@@ -14,13 +102,21 @@ $(function () {
       const matchesCategory = !selectedCategory || String($card.data('category-id')) === selectedCategory;
       const shouldShow = matchesSearch && matchesCategory;
 
-      $card.toggle(shouldShow);
+      $card.toggleClass('is-filtered-out', !shouldShow);
       if (shouldShow) {
         visibleCount += 1;
       }
     });
 
     $('#emptyCatalogMessage').toggleClass('is-visible', visibleCount === 0);
+
+    if (visibleCount === 0) {
+      $('#infiniteScrollSentinel').addClass('is-hidden');
+      $('#infiniteScrollStatus').text('');
+      return;
+    }
+
+    resetInfiniteScroll();
   }
 
   function updateSuggestions() {
@@ -103,5 +199,6 @@ $(function () {
     });
   });
 
+  setupInfiniteScrollObserver();
   filterProducts();
 });

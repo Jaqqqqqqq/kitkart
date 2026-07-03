@@ -26,7 +26,6 @@
             <thead>
               <tr>
                 <th>Order</th>
-                <th>Status</th>
                 <th>Payment</th>
                 <th>Items</th>
                 <th>Total</th>
@@ -37,7 +36,6 @@
               <% orders.forEach((order) => { %>
                 <tr>
                   <td>#<%= order.id %></td>
-                  <td><%= order.order_status %></td>
                   <td><%= order.payment_method %></td>
                   <td><%= order.item_count %></td>
                   <td>PHP <%= order.total.toFixed(2) %></td>

@@ -5,49 +5,216 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %></title>
   <link rel="stylesheet" href="/css/catalog.css">
+  <style>
+.status-message{
+    display:none;
+    margin-bottom:15px;
+    padding:12px;
+    border-radius:6px;
+    background:#d1fae5;
+    color:#065f46;
+    border:1px solid #10b981;
+    font-weight:600;
+}
+</style>
 </head>
 <body>
-  <main class="page">
-    <header class="catalog-header">
-      <div>
-        <a href="/admin/orders" class="back-link">Back to all orders</a>
-        <h1>Order #<%= order.id %></h1>
-        <p><%= order.first_name %> <%= order.last_name %> - <%= order.email %></p>
-      </div>
-    </header>
 
-    <section class="cart-panel">
-      <p>Status: <strong><%= order.order_status %></strong></p>
-      <p>Payment: <strong><%= order.payment_method %></strong></p>
+<main class="page">
 
-      <div class="cart-table-wrap">
-        <table class="cart-table">
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Price</th>
-              <th>Quantity</th>
-              <th>Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% order.items.forEach((item) => { %>
-              <tr>
-                <td><%= item.product_name %></td>
-                <td>PHP <%= item.price.toFixed(2) %></td>
-                <td><%= item.quantity %></td>
-                <td>PHP <%= item.subtotal.toFixed(2) %></td>
-              </tr>
-            <% }) %>
-          </tbody>
-        </table>
-      </div>
+  <header class="catalog-header">
+    <div>
+      <a href="/admin/orders" class="back-link">← Back to all orders</a>
 
-      <div class="cart-summary">
-        <p></p>
-        <p>Total: PHP <strong><%= order.total.toFixed(2) %></strong></p>
-      </div>
-    </section>
-  </main>
+      <h1>Order #<%= order.id %></h1>
+
+      <p>
+        <%= order.first_name %>
+        <%= order.last_name %>
+        -
+        <%= order.email %>
+      </p>
+    </div>
+  </header>
+
+  <section class="cart-panel">
+
+  <div id="statusMessage" class="status-message"></div>
+
+  <p>
+      Payment:
+      <strong><%= order.payment_method %></strong>
+  </p>
+
+    <div class="cart-table-wrap">
+
+      <table class="cart-table">
+
+        <thead>
+
+          <tr>
+
+            <th>Product</th>
+            <th>Price</th>
+            <th>Quantity</th>
+            <th>Subtotal</th>
+            <th>Status</th>
+            <th></th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+        <% order.items.forEach((item)=>{ %>
+
+          <tr>
+
+            <td><%= item.product_name %></td>
+
+            <td>
+              PHP <%= item.price.toFixed(2) %>
+            </td>
+
+            <td>
+              <%= item.quantity %>
+            </td>
+
+            <td>
+              PHP <%= item.subtotal.toFixed(2) %>
+            </td>
+
+            <td>
+
+              <select
+                  class="itemStatus"
+                  data-id="<%= item.id %>">
+
+                <option
+                    value="Pending"
+                    <%= item.status==="Pending"?"selected":"" %>>
+                    Pending
+                </option>
+
+                <option
+                    value="Shipped"
+                    <%= item.status==="Shipped"?"selected":"" %>>
+                    Shipped
+                </option>
+
+                <option
+                    value="Delivered"
+                    <%= item.status==="Delivered"?"selected":"" %>>
+                    Delivered
+                </option>
+
+                <option
+                    value="Cancelled"
+                    <%= item.status==="Cancelled"?"selected":"" %>>
+                    Cancelled
+                </option>
+
+              </select>
+
+            </td>
+
+            <td>
+
+              <button
+                class="saveStatus"
+                data-id="<%= item.id %>">
+
+                Save
+
+              </button>
+
+            </td>
+
+          </tr>
+
+        <% }) %>
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+    <div class="cart-summary">
+
+      <p></p>
+
+      <p>
+
+        Total:
+
+        PHP
+        <strong><%= order.total.toFixed(2) %></strong>
+
+      </p>
+
+    </div>
+
+  </section>
+
+</main>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<script>
+
+$(document).on("click",".saveStatus",function(){
+
+    const itemId=$(this).data("id");
+
+    const status=$(this)
+        .closest("tr")
+        .find(".itemStatus")
+        .val();
+
+    $.ajax({
+
+        url:"/admin/orders/items/"+itemId+"/status",
+
+        type:"PUT",
+
+        data:{
+            status:status
+        },
+
+        success:function(response){
+
+    $("#statusMessage")
+        .text("✓ " + response.message)
+        .fadeIn();
+
+    setTimeout(function(){
+
+        $("#statusMessage").fadeOut();
+
+    },2500);
+
+},
+
+        error:function(){
+
+    $("#statusMessage")
+        .css({
+            background:"#fee2e2",
+            color:"#991b1b",
+            border:"1px solid #dc2626"
+        })
+        .text("✗ Unable to update order status.")
+        .fadeIn();
+
+}
+
+    });
+
+});
+
+</script>
+
 </body>
 </html>

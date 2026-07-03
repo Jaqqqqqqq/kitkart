@@ -11,4 +11,5 @@ router.get('/orders', requireCustomer, orderController.orderHistory);
 router.get('/orders/:orderId/confirmation', requireCustomer, orderController.confirmationPage);
 router.get('/orders/:orderId', requireCustomer, orderController.orderDetails);
 
+
 module.exports = router;

@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %></title>
-  <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.min.css">
   <link rel="stylesheet" href="/css/catalog.css">
 </head>
 <body>
@@ -77,6 +76,9 @@
         </article>
       <% }) %>
     </section>
+
+    <p id="infiniteScrollStatus" class="table-note" aria-live="polite"></p>
+    <div id="infiniteScrollSentinel" class="infinite-sentinel" aria-hidden="true"></div>
 
     <p id="emptyCatalogMessage" class="empty-message">No school supplies match your search.</p>
   </main>

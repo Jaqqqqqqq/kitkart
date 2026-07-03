@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/catalog.css">
+</head>
+<body class="auth-page">
+  <main class="auth-panel">
+    <div>
+      <a href="/profile" class="back-link">Profile</a>
+      <p class="eyebrow">Customer</p>
+      <h1>Edit Profile</h1>
+      <p class="meta-copy">Update your account details.</p>
+    </div>
+
+    <% if (error) { %>
+      <p class="form-error"><%= error %></p>
+    <% } %>
+
+    <form action="/profile" method="POST" class="auth-form">
+      <div class="form-field">
+        <label for="first_name">First Name</label>
+        <input id="first_name" type="text" name="first_name" value="<%= currentUser.first_name %>" required>
+      </div>
+
+      <div class="form-field">
+        <label for="last_name">Last Name</label>
+        <input id="last_name" type="text" name="last_name" value="<%= currentUser.last_name %>" required>
+      </div>
+
+      <div class="form-field">
+        <label for="email">Email</label>
+        <input id="email" type="email" name="email" value="<%= currentUser.email %>" required>
+      </div>
+
+      <div class="form-field">
+        <label for="phone">Phone</label>
+        <input id="phone" type="text" name="phone" value="<%= currentUser.phone || '' %>">
+      </div>
+
+      <div class="form-field">
+        <label for="address">Address</label>
+        <textarea id="address" name="address" rows="3"><%= currentUser.address || '' %></textarea>
+      </div>
+
+      <button type="submit">Save Changes</button>
+    </form>
+  </main>
+</body>
+</html>

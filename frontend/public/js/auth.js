@@ -1,4 +1,15 @@
 $(function () {
+  function saveAuth(data) {
+    if (data.token) {
+      sessionStorage.setItem('token', data.token);
+    }
+
+    if (data.user?.id) {
+      sessionStorage.setItem('userId', data.user.id);
+      sessionStorage.setItem('role', data.user.role || '');
+    }
+  }
+
   function validateEmail(value) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
   }
@@ -10,6 +21,9 @@ $(function () {
   }
 
   $('#loginForm').on('submit', function (event) {
+    event.preventDefault();
+
+    const $form = $(this);
     const email = $('#email').val().trim();
     const password = $('#password').val();
     let valid = true;
@@ -27,11 +41,31 @@ $(function () {
     }
 
     if (!valid) {
-      event.preventDefault();
+      return;
     }
+
+    $.ajax({
+      method: 'POST',
+      url: '/api/v1/login',
+      data: JSON.stringify({ email, password }),
+      processData: false,
+      contentType: 'application/json; charset=utf-8',
+      dataType: 'json',
+      success: function (data) {
+        saveAuth(data);
+        window.location.href = data.redirectUrl || '/home';
+      },
+      error: function (error) {
+        const message = error.responseJSON?.message || 'Login failed.';
+        showFieldError($form.find('#password'), message);
+      },
+    });
   });
 
   $('#registerForm').on('submit', function (event) {
+    event.preventDefault();
+
+    const $form = $(this);
     const firstName = $('#first_name').val().trim();
     const lastName = $('#last_name').val().trim();
     const email = $('#email').val().trim();
@@ -67,7 +101,31 @@ $(function () {
     }
 
     if (!valid) {
-      event.preventDefault();
+      return;
     }
+
+    $.ajax({
+      method: 'POST',
+      url: '/api/v1/register',
+      data: JSON.stringify({
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        password,
+        phone: $('#phone').val().trim(),
+        address: $('#address').val().trim(),
+      }),
+      processData: false,
+      contentType: 'application/json; charset=utf-8',
+      dataType: 'json',
+      success: function (data) {
+        saveAuth(data);
+        window.location.href = data.redirectUrl || '/home';
+      },
+      error: function (error) {
+        const message = error.responseJSON?.message || 'Registration failed.';
+        showFieldError($form.find('#email'), message);
+      },
+    });
   });
 });

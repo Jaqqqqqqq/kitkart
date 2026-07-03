@@ -9,3 +9,5 @@ router.get('/', requireCustomer, productController.index);
 router.get('/:id', requireCustomer, productController.show);
 
 module.exports = router;
+
+

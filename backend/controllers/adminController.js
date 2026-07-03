@@ -1,13 +1,43 @@
 const adminModel = require('../models/adminModel');
+const reviewModel = require('../models/reviewModel');
+const db = require('../models');
+const Category = db.Category;
 
 function productFormDefaults(product = {}) {
   return {
+    id: product.id || null,
     category_id: product.category_id || '',
     product_name: product.product_name || '',
     description: product.description || '',
     price: product.price ?? '',
     stock_quantity: product.stock_quantity ?? '',
     image: product.image || '',
+    images: product.images || [],
+  };
+}
+
+function getUploadedFile(req, fieldName) {
+  if (Array.isArray(req.files)) {
+    return req.files.find((file) => file.fieldname === fieldName) || null;
+  }
+
+  return req.files?.[fieldName]?.[0] || null;
+}
+
+function getUploadedFilenames(req, fieldName) {
+  if (Array.isArray(req.files)) {
+    return req.files
+      .filter((file) => file.fieldname === fieldName)
+      .map((file) => file.filename);
+  }
+
+  return (req.files?.[fieldName] || []).map((file) => file.filename);
+}
+
+function getProductUploadOptions(req) {
+  return {
+    mainImage: getUploadedFile(req, 'main_image')?.filename || null,
+    galleryImages: getUploadedFilenames(req, 'gallery_images').slice(0, 8),
   };
 }
 
@@ -83,7 +113,7 @@ async function newProduct(req, res) {
 
 async function createProduct(req, res) {
   try {
-    await adminModel.createProduct(req.body);
+    await adminModel.createProduct(req.body, getProductUploadOptions(req));
     return res.redirect('/admin/products');
   } catch (error) {
     const categories = await adminModel.getCategories();
@@ -124,15 +154,18 @@ async function editProduct(req, res) {
 
 async function updateProduct(req, res) {
   try {
-    await adminModel.updateProduct(req.params.id, req.body);
+    await adminModel.updateProduct(req.params.id, req.body, getProductUploadOptions(req));
     return res.redirect('/admin/products');
   } catch (error) {
-    const categories = await adminModel.getCategories();
+    const [categories, existingProduct] = await Promise.all([
+      adminModel.getCategories(),
+      adminModel.getProductById(req.params.id),
+    ]);
 
     return res.status(error.statusCode || 500).render('admin/products/form', {
       title: 'Edit Product',
       action: `/admin/products/${req.params.id}`,
-      product: productFormDefaults({ ...req.body, id: req.params.id }),
+      product: productFormDefaults({ ...(existingProduct || {}), ...req.body, id: req.params.id }),
       categories,
       error: error.message || 'Unable to update product.',
     });
@@ -247,6 +280,20 @@ async function users(req, res) {
   }
 }
 
+async function reviews(req, res) {
+  try {
+    const allReviews = await reviewModel.getReviewsForAdmin();
+
+    return res.render('admin/reviews/index', {
+      title: 'Customer Reviews',
+      reviews: allReviews,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send('Unable to load reviews.');
+  }
+}
+
 async function updateUserRole(req, res) {
   try {
     await adminModel.updateUserRole(req.params.id, req.body.role);
@@ -279,22 +326,174 @@ async function updateUserStatus(req, res) {
   }
 }
 
+async function getAllUsers(req, res) {
+  try {
+    const allUsers = await adminModel.getUsers();
+
+    return res.status(200).json({
+      success: true,
+      rows: allUsers,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error fetching users',
+    });
+  }
+}
+
+async function getAllCategories(req, res) {
+  try {
+    const allCategories = await Category.findAll({ order: [['category_name', 'ASC']] });
+
+    return res.status(200).json({
+      success: true,
+      rows: allCategories,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ success: false, message: 'Error fetching categories' });
+  }
+}
+
+async function getSingleCategory(req, res) {
+  try {
+    const category = await Category.findByPk(req.params.id);
+
+    if (!category) {
+      return res.status(404).json({ success: false, message: 'Category not found' });
+    }
+
+    return res.status(200).json({ success: true, result: category });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ success: false, message: 'Error fetching category' });
+  }
+}
+
+async function createCategoryApi(req, res) {
+  try {
+    const { category_name, description } = req.body;
+
+    if (!category_name) {
+      return res.status(400).json({ success: false, message: 'Category name is required' });
+    }
+
+    const category = await Category.create({ category_name, description });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Category created successfully',
+      result: category,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ success: false, message: 'Error creating category' });
+  }
+}
+
+async function updateCategoryApi(req, res) {
+  try {
+    const category = await Category.findByPk(req.params.id);
+
+    if (!category) {
+      return res.status(404).json({ success: false, message: 'Category not found' });
+    }
+
+    await category.update({
+      category_name: req.body.category_name || category.category_name,
+      description: req.body.description || category.description,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Category updated successfully',
+      result: category,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ success: false, message: 'Error updating category' });
+  }
+}
+
+async function deleteCategoryApi(req, res) {
+  try {
+    const category = await Category.findByPk(req.params.id);
+
+    if (!category) {
+      return res.status(404).json({ success: false, message: 'Category not found' });
+    }
+
+    await category.destroy();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Category deleted successfully',
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ success: false, message: 'Error deleting category' });
+  }
+}
+
+async function updateOrderItemStatus(req,res){
+
+    try{
+
+        await adminModel.updateOrderItemStatus(
+
+            req.params.itemId,
+            req.body.status
+
+        );
+
+        res.json({
+
+            success:true,
+            message:"Updated."
+
+        });
+
+    }
+
+    catch(err){
+
+        res.status(err.statusCode || 500).json({
+
+            success:false,
+            message:err.message || 'Unable to update item status.'
+
+        });
+
+    }
+
+}
+
 module.exports = {
   categories,
+  createCategoryApi,
   createCategory,
   createProduct,
   deleteCategory,
+  deleteCategoryApi,
   deleteProduct,
   editCategory,
   editProduct,
+  getAllCategories,
+  getAllUsers,
+  getSingleCategory,
   newCategory,
   newProduct,
   orderDetails,
   orders,
   products,
+  reviews,
   updateCategory,
+  updateCategoryApi,
   updateProduct,
   updateUserRole,
   updateUserStatus,
   users,
+  updateOrderItemStatus
 };

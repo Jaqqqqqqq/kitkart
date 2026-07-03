@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/catalog.css">
+</head>
+<body>
+  <main class="page">
+    <header class="catalog-header">
+      <div>
+        <a href="/admin/dashboard" class="back-link">Dashboard</a>
+        <h1>Sales Charts</h1>
+      </div>
+    </header>
+
+    <section id="dashboardCharts" class="dashboard-charts" aria-label="Dashboard charts">
+      <article class="chart-card">
+        <h2 class="section-heading">Yearly Sales</h2>
+        <canvas id="yearlySalesBarChart" aria-label="Bar chart of yearly sales"></canvas>
+      </article>
+
+      <article class="chart-card">
+        <h2 class="section-heading">Revenue by Month</h2>
+        <canvas id="revenueLineChart" aria-label="Line chart of revenue by month"></canvas>
+      </article>
+
+      <article class="chart-card">
+        <h2 class="section-heading">Product Sales Distribution</h2>
+        <canvas id="productSalesPieChart" aria-label="Pie chart of product sales"></canvas>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    window.dashboardChartsData = <%- JSON.stringify(chartData || {}) %>;
+  </script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="/js/admin-dashboard-charts.js"></script>
+</body>
+</html>

@@ -94,10 +94,84 @@ async function orderDetails(req, res) {
   }
 }
 
+function handleApiError(res, error, fallbackMessage) {
+  console.log(error);
+  return res.status(error.statusCode || 500).json({
+    success: false,
+    message: error.message || fallbackMessage,
+  });
+}
+
+async function getCheckout(req, res) {
+  try {
+    const checkout = await orderModel.getCheckoutCart(req.user.id);
+
+    return res.status(200).json({
+      success: true,
+      result: checkout,
+      paymentMethods: orderModel.PAYMENT_METHODS,
+    });
+  } catch (error) {
+    return handleApiError(res, error, 'Error fetching checkout');
+  }
+}
+
+async function createOrder(req, res) {
+  try {
+    const orderId = await orderModel.createOrderFromCart(req.user.id, req.body.payment_method);
+    const order = await orderModel.getOrderForUser(req.user.id, orderId);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Order placed successfully',
+      result: order,
+    });
+  } catch (error) {
+    return handleApiError(res, error, 'Error creating order');
+  }
+}
+
+async function getOrders(req, res) {
+  try {
+    const orders = await orderModel.getOrdersForUser(req.user.id);
+
+    return res.status(200).json({
+      success: true,
+      rows: orders,
+    });
+  } catch (error) {
+    return handleApiError(res, error, 'Error fetching orders');
+  }
+}
+
+async function getSingleOrder(req, res) {
+  try {
+    const order = await orderModel.getOrderForUser(req.user.id, req.params.id);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      result: order,
+    });
+  } catch (error) {
+    return handleApiError(res, error, 'Error fetching order');
+  }
+}
+
 module.exports = {
   checkoutPage,
+  createOrder,
+  getCheckout,
+  getOrders,
+  getSingleOrder,
   placeOrder,
   confirmationPage,
   orderHistory,
-  orderDetails,
+  orderDetails
 };
