@@ -1,23 +1,68 @@
 $(function () {
+  // Confirmation Modal Management
+  let confirmCallback = null;
+
+  function initConfirmModal() {
+    const $modal = $('#confirmModal');
+    if ($modal.length === 0) {
+      const modalHtml = `
+        <div id="confirmModal" class="confirm-modal" style="display: none;">
+          <div class="confirm-modal-overlay"></div>
+          <div class="confirm-modal-content">
+            <p id="confirmMessage"></p>
+            <div class="confirm-modal-actions">
+              <button type="button" class="confirm-modal-cancel">Cancel</button>
+              <button type="button" class="confirm-modal-confirm danger-button">Delete</button>
+            </div>
+          </div>
+        </div>
+      `;
+      $('body').append(modalHtml);
+    }
+  }
+
+  function showConfirmModal(message, callback) {
+    initConfirmModal();
+    const $modal = $('#confirmModal');
+    $('#confirmMessage').text(message);
+    confirmCallback = callback;
+    $modal.show();
+  }
+
+  function closeConfirmModal() {
+    $('#confirmModal').hide();
+    confirmCallback = null;
+  }
+
+  $(document).on('click', '.confirm-modal-cancel', closeConfirmModal);
+  $(document).on('click', '.confirm-modal-confirm', function () {
+    if (confirmCallback && typeof confirmCallback === 'function') {
+      confirmCallback();
+    }
+    closeConfirmModal();
+  });
+
   function getToken() {
-    return sessionStorage.getItem('token') || '';
+    return sessionStorage.getItem('token') || localStorage.getItem('token') || '';
   }
 
   function apiAjax(options) {
     return $.ajax({
-      ...options,
+      xhrFields: { withCredentials: true },
       headers: {
         Authorization: 'Bearer ' + getToken(),
         ...(options.headers || {}),
       },
+      ...options,
     });
   }
 
   function showToast(message, type) {
-    const $toast = $('#toast');
+    let $toast = $('#toast');
 
     if (!$toast.length) {
-      return;
+      $toast = $('<div id="toast" class="msg-toast"></div>');
+      $('body').append($toast);
     }
 
     $toast
@@ -149,25 +194,65 @@ $(function () {
     if ($form.hasClass('js-api-form')) {
       event.preventDefault();
 
-      apiAjax({
-        method: $form.data('api-method') || 'POST',
-        url: $form.data('api-url'),
-        data: new FormData(this),
-        processData: false,
-        contentType: false,
+      const token = getToken();
+      if (!token) {
+        showToast('Authentication failed. Please login again.', 'error');
+        return;
+      }
+
+      const requestMethod = $form.data('api-method') || 'POST';
+      const apiUrl = $form.data('api-url');
+      const isCategoryForm = $form.is('#categoryForm');
+
+      let ajaxOptions = {
+        method: requestMethod,
+        url: apiUrl,
         dataType: 'json',
         success: function (data) {
+          console.log('API Response:', data);
           if (!data.success) {
             showToast(data.message || 'Save failed.', 'error');
             return;
           }
 
-          window.location.href = $form.data('redirect') || '/admin/dashboard';
+          showToast(data.message || 'Saved successfully.', 'success');
+          setTimeout(function () {
+            window.location.href = $form.data('redirect') || '/admin/dashboard';
+          }, 500);
         },
         error: function (error) {
-          showToast(error.responseJSON?.message || 'Save failed.', 'error');
+          console.error('API Error:', error);
+          const errorMessage = error.responseJSON?.message || error.statusText || 'Save failed.';
+          showToast(errorMessage, 'error');
         },
-      });
+      };
+
+      // For category forms, send JSON
+      if (isCategoryForm) {
+        const categoryName = $form.find('#category_name').val();
+        const description = $form.find('#description').val();
+        
+        ajaxOptions.data = JSON.stringify({
+          category_name: categoryName,
+          description: description,
+        });
+        ajaxOptions.contentType = 'application/json';
+        ajaxOptions.processData = false;
+        
+        console.log('Category form submission:', {
+          url: apiUrl,
+          method: requestMethod,
+          data: {category_name: categoryName, description: description},
+          contentType: ajaxOptions.contentType
+        });
+      } else {
+        // For product forms, send FormData
+        ajaxOptions.data = new FormData(this);
+        ajaxOptions.processData = false;
+        ajaxOptions.contentType = false;
+      }
+
+      apiAjax(ajaxOptions);
     }
   });
 
@@ -194,36 +279,35 @@ $(function () {
   $('.js-api-delete').on('submit', function (event) {
     event.preventDefault();
 
-    if (!window.confirm('Delete this record?')) {
-      return;
-    }
-
     const $form = $(this);
 
-    apiAjax({
-      method: 'DELETE',
-      url: $form.data('api-url'),
-      dataType: 'json',
-      success: function (data) {
-        if (!data.success) {
-          showToast(data.message || 'Delete failed.', 'error');
-          return;
-        }
+    showConfirmModal('Delete this record?', function () {
+      apiAjax({
+        method: 'DELETE',
+        url: $form.data('api-url'),
+        dataType: 'json',
+        success: function (data) {
+          if (!data.success) {
+            showToast(data.message || 'Delete failed.', 'error');
+            return;
+          }
 
-        const rowSelector = $form.data('row');
-        const table = $form.closest('table').DataTable();
+          const rowSelector = $form.data('row');
+          const table = $form.closest('table').DataTable();
 
-        if (table) {
-          table.row($(rowSelector)).remove().draw();
-        } else {
-          $(rowSelector).remove();
-        }
+          if (table) {
+            table.row($(rowSelector)).remove().draw();
+          } else {
+            $(rowSelector).remove();
+          }
 
-        showToast(data.message || 'Deleted successfully.', 'success');
-      },
-      error: function (error) {
-        showToast(error.responseJSON?.message || 'Delete failed.', 'error');
-      },
+          showToast(data.message || 'Deleted successfully.', 'success');
+        },
+        error: function (error) {
+          console.error('Delete error:', error);
+          showToast(error.responseJSON?.message || 'Delete failed.', 'error');
+        },
+      });
     });
   });
 

@@ -12,13 +12,18 @@
       <div>
         <a href="/home" class="back-link">Home</a>
         <p class="eyebrow">Customer</p>
-        <h1>Profile</h1>
-        <p class="meta-copy">Edit your account details.</p>
+        <h1>Your profile</h1>
+        <p class="meta-copy">Edit your account details for smoother checkout and order updates.</p>
       </div>
 
       <form action="/auth/logout" method="POST">
         <button type="submit" class="danger-button">Logout</button>
       </form>
+    </div>
+
+    <div class="hero-pills">
+      <span class="pill brand">Account details</span>
+      <span class="pill blue">Checkout info</span>
     </div>
 
     <% if (error) { %>

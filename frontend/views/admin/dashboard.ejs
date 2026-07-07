@@ -11,13 +11,19 @@
     <div class="dashboard-hero">
       <div>
         <p class="eyebrow">Admin</p>
-        <h1>Dashboard</h1>
-        <p class="meta-copy">Welcome, <%= currentUser.first_name %>. You are signed in as <%= currentUser.email %>.</p>
+        <h1>Store control panel</h1>
+        <p class="meta-copy">Welcome, <%= currentUser.first_name %>. Manage products, orders, users, and school supply reporting.</p>
       </div>
 
       <form action="/auth/logout" method="POST">
         <button type="submit" class="danger-button">Logout</button>
       </form>
+    </div>
+
+    <div class="hero-pills" style="margin-bottom: 14px;">
+      <span class="pill brand">Inventory</span>
+      <span class="pill blue">Orders</span>
+      <span class="pill sun">Users</span>
     </div>
 
     <div class="dashboard-links">

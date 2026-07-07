@@ -12,7 +12,9 @@
     <header class="catalog-header">
       <div>
         <a href="/admin/dashboard" class="back-link">Dashboard</a>
+        <p class="eyebrow">Inventory</p>
         <h1>Products</h1>
+        <p class="meta-copy">Manage school supply items, pricing, stock, and product photos.</p>
       </div>
       <a href="/admin/products/new" class="button-link">Add product</a>
     </header>
@@ -51,7 +53,7 @@
                     <% } %>
                   </td>
                   <td>
-                    <a href="/admin/products/<%= product.id %>/edit">Edit</a>
+                    <a href="/admin/products/<%= product.id %>/edit" class="action-link">Edit</a>
                     <form
                       action="/admin/products/<%= product.id %>/delete"
                       method="POST"

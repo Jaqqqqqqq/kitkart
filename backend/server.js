@@ -1,10 +1,12 @@
 const path = require('path');
+require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const bodyParser = require('body-parser');
 const multer = require('multer');
 
 const { testConnection } = require('./config/db');
+const { sequelize } = require('./config/sequelize');
 const indexRoutes = require('./routes');
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
@@ -65,6 +67,18 @@ app.use('/', reviewRoutes);
 async function startServer() {
   try {
     await testConnection();
+    const queryInterface = sequelize.getQueryInterface();
+    const orderItemsTable = await queryInterface.describeTable('order_items');
+
+    if (!Object.prototype.hasOwnProperty.call(orderItemsTable, 'status')) {
+      await queryInterface.addColumn('order_items', 'status', {
+        type: sequelize.Sequelize.ENUM('Pending', 'Shipped', 'Delivered', 'Cancelled'),
+        allowNull: false,
+        defaultValue: 'Pending',
+      });
+      console.log('Added missing status column to order_items.');
+    }
+
     app.listen(PORT, () => {
       console.log(`Server is running at http://localhost:${PORT}`);
     });

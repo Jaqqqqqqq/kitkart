@@ -1,6 +1,8 @@
 const adminModel = require('../models/adminModel');
 const reviewModel = require('../models/reviewModel');
 const db = require('../models');
+const { sendTransactionUpdateEmail } = require('../services/mailService');
+const { generateReceiptPdf } = require('../services/receiptService');
 const Category = db.Category;
 
 function productFormDefaults(product = {}) {
@@ -374,6 +376,14 @@ async function getSingleCategory(req, res) {
 
 async function createCategoryApi(req, res) {
   try {
+    console.log('Category API Request:', {
+      method: req.method,
+      url: req.url,
+      headers: req.headers['content-type'],
+      bodyType: typeof req.body,
+      body: req.body,
+    });
+
     const { category_name, description } = req.body;
 
     if (!category_name) {
@@ -388,8 +398,8 @@ async function createCategoryApi(req, res) {
       result: category,
     });
   } catch (error) {
-    console.log(error);
-    return res.status(500).json({ success: false, message: 'Error creating category' });
+    console.error('Category creation error:', error.message, error);
+    return res.status(500).json({ success: false, message: error.message || 'Error creating category' });
   }
 }
 
@@ -412,8 +422,8 @@ async function updateCategoryApi(req, res) {
       result: category,
     });
   } catch (error) {
-    console.log(error);
-    return res.status(500).json({ success: false, message: 'Error updating category' });
+    console.error('Category update error:', error.message, error);
+    return res.status(500).json({ success: false, message: error.message || 'Error updating category' });
   }
 }
 
@@ -432,14 +442,20 @@ async function deleteCategoryApi(req, res) {
       message: 'Category deleted successfully',
     });
   } catch (error) {
-    console.log(error);
-    return res.status(500).json({ success: false, message: 'Error deleting category' });
+    console.error('Category delete error:', error.message, error);
+    return res.status(500).json({ success: false, message: error.message || 'Error deleting category' });
   }
 }
 
 async function updateOrderItemStatus(req,res){
 
     try{
+        console.log('Update order status request:', {
+            itemId: req.params.itemId,
+            status: req.body.status,
+            method: req.method,
+            user: req.session?.user?.email || 'No session'
+        });
 
         await adminModel.updateOrderItemStatus(
 
@@ -448,16 +464,57 @@ async function updateOrderItemStatus(req,res){
 
         );
 
+        const order = await adminModel.getOrderByItemId(req.params.itemId);
+        let emailStatus = 'sent';
+
+        if (order) {
+            try {
+                const receiptPdf = await generateReceiptPdf(order);
+
+                const mailResult = await sendTransactionUpdateEmail({
+                    to: order.email,
+                    subject: `KitKart Order #${order.id} Status Updated`,
+                    html: `
+                        <p>Hello ${order.first_name},</p>
+                        <p>Your KitKart order #${order.id} was updated to <strong>${req.body.status}</strong>.</p>
+                        <p>Your updated receipt is attached as a PDF.</p>
+                    `,
+                    attachments: [
+                        {
+                            filename: `kitkart-order-${order.id}-receipt.pdf`,
+                            content: receiptPdf,
+                            contentType: 'application/pdf',
+                        },
+                    ],
+                });
+
+                emailStatus = mailResult?.skipped ? 'skipped' : 'sent';
+            } catch (mailError) {
+                emailStatus = 'failed';
+                console.error('Unable to send transaction update email:', mailError);
+            }
+        }
+
         res.json({
 
             success:true,
-            message:"Updated."
+            message: emailStatus === 'sent'
+                ? "Updated. Email receipt sent."
+                : emailStatus === 'skipped'
+                    ? "Updated. Email skipped because Mailtrap is not configured."
+                    : "Updated. Email receipt could not be sent.",
+            emailStatus
 
         });
 
     }
 
     catch(err){
+        console.error('Error updating order status:', {
+            itemId: req.params.itemId,
+            error: err.message,
+            stack: err.stack
+        });
 
         res.status(err.statusCode || 500).json({
 

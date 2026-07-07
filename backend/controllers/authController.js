@@ -135,15 +135,16 @@ async function postRegister(req, res) {
       role: 'customer',
     };
 
-    req.session.user = sessionUser;
-
-    const redirectUrl = getRedirectUrlForRole(sessionUser.role);
-
+    // Redirect to login instead of auto-logging in
     if (wantsJson(req)) {
-      return res.status(201).json(authJson(sessionUser, token, redirectUrl));
+      return res.status(201).json({
+        success: true,
+        message: 'Registration successful! Please log in.',
+        redirectUrl: '/auth/login'
+      });
     }
 
-    return res.redirect(redirectUrl);
+    return res.redirect('/auth/login');
   } catch (error) {
     console.error(error);
 

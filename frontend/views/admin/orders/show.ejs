@@ -179,14 +179,21 @@ $(document).on("click",".saveStatus",function(){
 
         type:"PUT",
 
-        data:{
+        contentType: "application/json",
+        
+        data: JSON.stringify({
             status:status
-        },
+        }),
 
         success:function(response){
 
     $("#statusMessage")
-        .text("✓ " + response.message)
+        .css({
+            background:"#d1fae5",
+            color:"#065f46",
+            border:"1px solid #10b981"
+        })
+        .text("✓ " + (response.message || "Status updated successfully"))
         .fadeIn();
 
     setTimeout(function(){
@@ -197,7 +204,17 @@ $(document).on("click",".saveStatus",function(){
 
 },
 
-        error:function(){
+        error:function(xhr){
+
+            let errorMessage = "Unable to update order status.";
+            
+            if (xhr.responseJSON?.message) {
+                errorMessage = xhr.responseJSON.message;
+            } else if (xhr.status === 401) {
+                errorMessage = "Authentication required. Please login.";
+            } else if (xhr.status === 403) {
+                errorMessage = "You do not have permission to update orders.";
+            }
 
     $("#statusMessage")
         .css({
@@ -205,7 +222,7 @@ $(document).on("click",".saveStatus",function(){
             color:"#991b1b",
             border:"1px solid #dc2626"
         })
-        .text("✗ Unable to update order status.")
+        .text("✗ " + errorMessage)
         .fadeIn();
 
 }

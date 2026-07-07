@@ -4,15 +4,62 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %></title>
+  <link rel="stylesheet" href="/css/catalog.css">
 </head>
 <body>
-  <main>
-    <h1><%= title %></h1>
-    <p>Node.js, Express, EJS, MySQL, and authentication are set up.</p>
-    <p>
-      <a href="/auth/login">Login</a>
-      <a href="/auth/register">Register</a>
-    </p>
+  <main class="page">
+    <section class="home-hero">
+      <div>
+        <p class="eyebrow">Kitkart School Supplies</p>
+        <h1>Your school essentials, sorted in one place.</h1>
+        <p class="hero-copy">
+          Buy notebooks, pens, paper, art materials, and classroom basics with a clean
+          checkout flow built for students, parents, and school admins.
+        </p>
+
+        <div class="hero-pills">
+          <span class="pill brand">Notebooks</span>
+          <span class="pill blue">Pens & markers</span>
+          <span class="pill sun">Paper & folders</span>
+          <span class="pill">Fast order tracking</span>
+        </div>
+
+        <div class="catalog-actions" style="margin-top: 18px;">
+          <a class="secondary-button" href="/auth/login">Login</a>
+          <a class="button-link" href="/auth/register">Create account</a>
+          <a class="button-link" href="/shop">Browse shop</a>
+        </div>
+      </div>
+
+      <div class="home-hero-art">
+        <div>
+          <strong>Back-to-school ready</strong>
+          <p style="margin: 10px 0 0;">
+            A brighter storefront for supplies, orders, and admin work.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="home-grid">
+      <article class="info-card">
+        <p class="eyebrow">For shoppers</p>
+        <h3>Easy browsing</h3>
+        <p>Find the supplies you need quickly with simple product cards and clear pricing.</p>
+      </article>
+
+      <article class="info-card">
+        <p class="eyebrow">For admins</p>
+        <h3>Order control</h3>
+        <p>Update order status, send email notices, and keep the fulfillment flow organized.</p>
+      </article>
+
+      <article class="info-card">
+        <p class="eyebrow">For the class</p>
+        <h3>School-ready theme</h3>
+        <p>Soft paper whites, pencil yellows, and blue-green accents keep the app on-brand.</p>
+      </article>
+    </section>
   </main>
 </body>
 </html>

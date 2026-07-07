@@ -34,9 +34,29 @@
         </div>
 
         <% if (product.image_urls.length > 1) { %>
-          <div class="image-list">
-            <% product.image_urls.forEach((imageUrl) => { %>
-              <img src="<%= imageUrl %>" alt="<%= product.product_name %> image">
+          <div class="image-carousel-container">
+            <button class="carousel-btn carousel-prev" data-product="<%= product.id %>">
+              <span>❮</span>
+            </button>
+            <div class="image-carousel">
+              <div class="image-carousel-track" data-product="<%= product.id %>">
+                <% product.image_urls.forEach((imageUrl, index) => { %>
+                  <img 
+                    src="<%= imageUrl %>" 
+                    alt="<%= product.product_name %> image <%= index + 1 %>"
+                    class="carousel-image"
+                    data-index="<%= index %>"
+                  >
+                <% }) %>
+              </div>
+            </div>
+            <button class="carousel-btn carousel-next" data-product="<%= product.id %>">
+              <span>❯</span>
+            </button>
+          </div>
+          <div class="carousel-dots" data-product="<%= product.id %>">
+            <% product.image_urls.forEach((imageUrl, index) => { %>
+              <button class="dot <%= index === 0 ? 'active' : '' %>" data-index="<%= index %>"></button>
             <% }) %>
           </div>
         <% } %>
@@ -142,6 +162,65 @@
   </main>
 
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="/js/catalog.js"></script>
+  <script>
+    $(document).ready(function() {
+      // Image carousel functionality
+      const carouselData = {};
+
+      // Initialize carousel data
+      $('.image-carousel-track').each(function() {
+        const productId = $(this).data('product');
+        carouselData[productId] = { currentIndex: 0 };
+      });
+
+      // Next button click
+      $('.carousel-next').on('click', function() {
+        const productId = $(this).data('product');
+        const track = $(`.image-carousel-track[data-product="${productId}"]`);
+        const images = track.find('.carousel-image');
+        const dotsContainer = $(`.carousel-dots[data-product="${productId}"]`);
+        const dots = dotsContainer.find('.dot');
+
+        carouselData[productId].currentIndex = (carouselData[productId].currentIndex + 1) % images.length;
+        updateCarousel(productId, track, dots);
+      });
+
+      // Previous button click
+      $('.carousel-prev').on('click', function() {
+        const productId = $(this).data('product');
+        const track = $(`.image-carousel-track[data-product="${productId}"]`);
+        const images = track.find('.carousel-image');
+        const dotsContainer = $(`.carousel-dots[data-product="${productId}"]`);
+        const dots = dotsContainer.find('.dot');
+
+        carouselData[productId].currentIndex = (carouselData[productId].currentIndex - 1 + images.length) % images.length;
+        updateCarousel(productId, track, dots);
+      });
+
+      // Dot click
+      $('.dot').on('click', function() {
+        const index = $(this).data('index');
+        const dotsContainer = $(this).closest('.carousel-dots');
+        const productId = dotsContainer.data('product');
+        const track = $(`.image-carousel-track[data-product="${productId}"]`);
+        const dots = dotsContainer.find('.dot');
+
+        carouselData[productId].currentIndex = index;
+        updateCarousel(productId, track, dots);
+      });
+
+      function updateCarousel(productId, track, dots) {
+        const index = carouselData[productId].currentIndex;
+        const offset = -index * 100;
+        
+        track.css('transform', `translateX(${offset}%)`);
+        
+        dots.removeClass('active');
+        dots.eq(index).addClass('active');
+      }
+    });
+  </script>
 </body>
 </html>

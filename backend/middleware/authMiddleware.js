@@ -43,10 +43,18 @@ function hasRole(req, allowedRoles) {
 function requireRole(allowedRoles, errorMessage = 'Access denied.') {
   return function roleGuard(req, res, next) {
     if (!req.session.user) {
+      // Check if it's an AJAX request
+      if (req.xhr || req.headers['content-type']?.includes('application/json') || req.headers['accept']?.includes('application/json')) {
+        return res.status(401).json({ success: false, message: 'Unauthorized. Please login.' });
+      }
       return res.redirect('/auth/login');
     }
 
     if (!hasRole(req, allowedRoles)) {
+      // Check if it's an AJAX request
+      if (req.xhr || req.headers['content-type']?.includes('application/json') || req.headers['accept']?.includes('application/json')) {
+        return res.status(403).json({ success: false, message: errorMessage });
+      }
       return res.status(403).send(errorMessage);
     }
 
@@ -102,6 +110,26 @@ function requireCustomerOrAdmin(req, res, next) {
 
 async function isAuthenticatedUser(req, res, next) {
   try {
+    // First, check if user is authenticated via session
+    if (req.session?.user?.id) {
+      try {
+        const user = await User.findOne({
+          where: {
+            id: req.session.user.id,
+            status: 'active',
+          },
+        });
+
+        if (user) {
+          req.user = user.get({ plain: true });
+          return next();
+        }
+      } catch (sessionError) {
+        console.log('Session auth error:', sessionError);
+      }
+    }
+
+    // If session auth fails or no session, try token-based auth
     const user = await getUserFromToken(req);
 
     if (!user) {
@@ -114,7 +142,7 @@ async function isAuthenticatedUser(req, res, next) {
     req.user = user.get({ plain: true });
     return next();
   } catch (error) {
-    console.log(error);
+    console.log('Auth error:', error);
     return res.status(500).json({
       success: false,
       message: 'Authentication failed',

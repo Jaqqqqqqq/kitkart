@@ -12,7 +12,9 @@
     <header class="catalog-header">
       <div>
         <a href="/admin/dashboard" class="back-link">Dashboard</a>
+        <p class="eyebrow">Catalog</p>
         <h1>Categories</h1>
+        <p class="meta-copy">Keep the store organized by class, subject, or supply type.</p>
       </div>
       <a href="/admin/categories/new" class="button-link">Add category</a>
     </header>
@@ -36,7 +38,7 @@
                   <td><%= category.category_name %></td>
                   <td><%= category.description || '-' %></td>
                   <td>
-                    <a href="/admin/categories/<%= category.id %>/edit">Edit</a>
+                    <a href="/admin/categories/<%= category.id %>/edit" class="action-link">Edit</a>
                     <form
                       action="/admin/categories/<%= category.id %>/delete"
                       method="POST"

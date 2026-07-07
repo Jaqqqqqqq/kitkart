@@ -110,6 +110,18 @@ async function getOrderById(orderId) {
   };
 }
 
+async function getOrderByItemId(itemId) {
+  const orderItem = await OrderItem.findByPk(itemId, {
+    attributes: ['order_id'],
+  });
+
+  if (!orderItem) {
+    return null;
+  }
+
+  return getOrderById(orderItem.order_id);
+}
+
 async function getProducts() {
   const products = await Product.findAll({
     include: [{ model: Category, attributes: ['category_name'] }],
@@ -352,6 +364,7 @@ module.exports = {
   getCategories,
   getCategoryById,
   getOrderById,
+  getOrderByItemId,
   getProductById,
   getProducts,
   getProductSalesSummary,
