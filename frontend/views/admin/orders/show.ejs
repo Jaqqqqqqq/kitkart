@@ -67,7 +67,17 @@
 
         <tbody>
 
+        <%
+          const statusTransitions = {
+            Pending: ['Pending', 'Shipped', 'Cancelled'],
+            Shipped: ['Shipped', 'Delivered', 'Cancelled'],
+            Delivered: ['Delivered'],
+            Cancelled: ['Cancelled'],
+          };
+        %>
+
         <% order.items.forEach((item)=>{ %>
+          <% const allowedStatuses = statusTransitions[item.status] || [item.status]; %>
 
           <tr>
 
@@ -91,29 +101,13 @@
                   class="itemStatus"
                   data-id="<%= item.id %>">
 
-                <option
-                    value="Pending"
-                    <%= item.status==="Pending"?"selected":"" %>>
-                    Pending
-                </option>
-
-                <option
-                    value="Shipped"
-                    <%= item.status==="Shipped"?"selected":"" %>>
-                    Shipped
-                </option>
-
-                <option
-                    value="Delivered"
-                    <%= item.status==="Delivered"?"selected":"" %>>
-                    Delivered
-                </option>
-
-                <option
-                    value="Cancelled"
-                    <%= item.status==="Cancelled"?"selected":"" %>>
-                    Cancelled
-                </option>
+                <% allowedStatuses.forEach((status)=>{ %>
+                  <option
+                      value="<%= status %>"
+                      <%= item.status===status?"selected":"" %>>
+                      <%= status %>
+                  </option>
+                <% }) %>
 
               </select>
 
@@ -164,14 +158,35 @@
 
 <script>
 
+const statusTransitions = {
+    Pending: ["Pending", "Shipped", "Cancelled"],
+    Shipped: ["Shipped", "Delivered", "Cancelled"],
+    Delivered: ["Delivered"],
+    Cancelled: ["Cancelled"]
+};
+
+function updateStatusOptions($select,status){
+    const options=statusTransitions[status] || [status];
+
+    $select.empty();
+
+    options.forEach(function(option){
+        $("<option>")
+            .val(option)
+            .text(option)
+            .prop("selected",option===status)
+            .appendTo($select);
+    });
+}
+
 $(document).on("click",".saveStatus",function(){
 
+    const $button=$(this);
+    const $row=$button.closest("tr");
+    const $select=$row.find(".itemStatus");
     const itemId=$(this).data("id");
 
-    const status=$(this)
-        .closest("tr")
-        .find(".itemStatus")
-        .val();
+    const status=$select.val();
 
     $.ajax({
 
@@ -186,6 +201,8 @@ $(document).on("click",".saveStatus",function(){
         }),
 
         success:function(response){
+
+    updateStatusOptions($select,status);
 
     $("#statusMessage")
         .css({

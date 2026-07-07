@@ -18,33 +18,9 @@ function productFormDefaults(product = {}) {
   };
 }
 
-function getUploadedFile(req, fieldName) {
-  if (Array.isArray(req.files)) {
-    return req.files.find((file) => file.fieldname === fieldName) || null;
-  }
-
-  return req.files?.[fieldName]?.[0] || null;
-}
-
-function getUploadedFilenames(req, fieldName) {
-  if (Array.isArray(req.files)) {
-    return req.files
-      .filter((file) => file.fieldname === fieldName)
-      .map((file) => file.filename);
-  }
-
-  return (req.files?.[fieldName] || []).map((file) => file.filename);
-}
-
-function getProductUploadOptions(req) {
-  return {
-    mainImage: getUploadedFile(req, 'main_image')?.filename || null,
-    galleryImages: getUploadedFilenames(req, 'gallery_images').slice(0, 8),
-  };
-}
-
 function categoryFormDefaults(category = {}) {
   return {
+    id: category.id || null,
     category_name: category.category_name || '',
     description: category.description || '',
   };
@@ -113,23 +89,6 @@ async function newProduct(req, res) {
   }
 }
 
-async function createProduct(req, res) {
-  try {
-    await adminModel.createProduct(req.body, getProductUploadOptions(req));
-    return res.redirect('/admin/products');
-  } catch (error) {
-    const categories = await adminModel.getCategories();
-
-    return res.status(error.statusCode || 500).render('admin/products/form', {
-      title: 'Add Product',
-      action: '/admin/products',
-      product: productFormDefaults(req.body),
-      categories,
-      error: error.message || 'Unable to create product.',
-    });
-  }
-}
-
 async function editProduct(req, res) {
   try {
     const [product, categories] = await Promise.all([
@@ -151,36 +110,6 @@ async function editProduct(req, res) {
   } catch (error) {
     console.error(error);
     return res.status(500).send('Unable to load product form.');
-  }
-}
-
-async function updateProduct(req, res) {
-  try {
-    await adminModel.updateProduct(req.params.id, req.body, getProductUploadOptions(req));
-    return res.redirect('/admin/products');
-  } catch (error) {
-    const [categories, existingProduct] = await Promise.all([
-      adminModel.getCategories(),
-      adminModel.getProductById(req.params.id),
-    ]);
-
-    return res.status(error.statusCode || 500).render('admin/products/form', {
-      title: 'Edit Product',
-      action: `/admin/products/${req.params.id}`,
-      product: productFormDefaults({ ...(existingProduct || {}), ...req.body, id: req.params.id }),
-      categories,
-      error: error.message || 'Unable to update product.',
-    });
-  }
-}
-
-async function deleteProduct(req, res) {
-  try {
-    await adminModel.deleteProduct(req.params.id);
-    return res.redirect('/admin/products');
-  } catch (error) {
-    console.error(error);
-    return res.status(500).send('Unable to delete product.');
   }
 }
 
@@ -211,22 +140,6 @@ function newCategory(req, res) {
   return renderCategoryForm(res, 'Add Category', '/admin/categories', {});
 }
 
-async function createCategory(req, res) {
-  try {
-    await adminModel.createCategory(req.body);
-    return res.redirect('/admin/categories');
-  } catch (error) {
-    return renderCategoryForm(
-      res,
-      'Add Category',
-      '/admin/categories',
-      req.body,
-      error.message || 'Unable to create category.',
-      error.statusCode || 500
-    );
-  }
-}
-
 async function editCategory(req, res) {
   try {
     const category = await adminModel.getCategoryById(req.params.id);
@@ -239,32 +152,6 @@ async function editCategory(req, res) {
   } catch (error) {
     console.error(error);
     return res.status(500).send('Unable to load category form.');
-  }
-}
-
-async function updateCategory(req, res) {
-  try {
-    await adminModel.updateCategory(req.params.id, req.body);
-    return res.redirect('/admin/categories');
-  } catch (error) {
-    return renderCategoryForm(
-      res,
-      'Edit Category',
-      `/admin/categories/${req.params.id}`,
-      req.body,
-      error.message || 'Unable to update category.',
-      error.statusCode || 500
-    );
-  }
-}
-
-async function deleteCategory(req, res) {
-  try {
-    await adminModel.deleteCategory(req.params.id);
-    return res.redirect('/admin/categories');
-  } catch (error) {
-    console.error(error);
-    return res.status(500).send('Unable to delete category.');
   }
 }
 
@@ -530,11 +417,7 @@ async function updateOrderItemStatus(req,res){
 module.exports = {
   categories,
   createCategoryApi,
-  createCategory,
-  createProduct,
-  deleteCategory,
   deleteCategoryApi,
-  deleteProduct,
   editCategory,
   editProduct,
   getAllCategories,
@@ -546,9 +429,7 @@ module.exports = {
   orders,
   products,
   reviews,
-  updateCategory,
   updateCategoryApi,
-  updateProduct,
   updateUserRole,
   updateUserStatus,
   users,

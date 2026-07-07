@@ -37,7 +37,7 @@
             <tbody>
               <% orders.forEach((order) => { %>
                 <tr>
-                  <td>#<%= order.id %></td>
+                  <td data-order="<%= new Date(order.created_at).toISOString() %>-<%= String(order.id).padStart(10, '0') %>">#<%= order.id %></td>
                   <td><%= order.first_name %> <%= order.last_name %><br><%= order.email %></td>
                   <td><%= order.payment_method %></td>
                   <td><%= order.item_count %></td>

@@ -1,15 +1,11 @@
-const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const { User } = require('../config/sequelize');
 const userModel = require('../models/userModel');
 
 function wantsJson(req) {
   return req.xhr || req.headers.accept?.includes('application/json');
-}
-
-function generateToken() {
-  return crypto.randomBytes(32).toString('hex');
 }
 
 function authJson(user, token, redirectUrl) {
@@ -24,6 +20,10 @@ function authJson(user, token, redirectUrl) {
 
 function getRedirectUrlForRole(role) {
   return String(role || '').trim().toLowerCase() === 'admin' ? '/admin/dashboard' : '/home';
+}
+
+function getJwtSecret() {
+  return process.env.JWT_SECRET || 'kitkart-jwt-secret';
 }
 
 function getLogin(req, res) {
@@ -113,7 +113,6 @@ async function postRegister(req, res) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    const token = generateToken();
 
     const user = await User.create({
       first_name,
@@ -122,7 +121,6 @@ async function postRegister(req, res) {
       password: hashedPassword,
       role: 'customer',
       status: 'active',
-      token,
       phone: phone || null,
       address: address || null,
     });
@@ -228,7 +226,7 @@ async function postLogin(req, res) {
     }
 
     const role = String(user.role || '').trim().toLowerCase();
-    const token = generateToken();
+    const token = jwt.sign({ id: user.id }, getJwtSecret());
     await user.update({ token });
 
     req.session.user = {

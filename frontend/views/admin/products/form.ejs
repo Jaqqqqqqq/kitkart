@@ -24,8 +24,11 @@
         action="<%= action %>"
         method="POST"
         enctype="multipart/form-data"
-        class="admin-form js-admin-form"
+        class="admin-form js-admin-form js-api-form"
         id="productForm"
+        data-api-url="<%= product.id ? '/api/v1/products/' + product.id : '/api/v1/products' %>"
+        data-api-method="<%= product.id ? 'PUT' : 'POST' %>"
+        data-redirect="/admin/products"
         data-has-main-image="<%= product.image ? 'true' : 'false' %>"
         novalidate>
         <input id="remove_main_image" type="hidden" name="remove_main_image" value="0">

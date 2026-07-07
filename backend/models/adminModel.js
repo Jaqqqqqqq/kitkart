@@ -1,44 +1,12 @@
 const { Category, Order, OrderItem, Product, ProductImage, User } = require('../config/sequelize');
 
 const ORDER_ITEM_STATUSES = ['Pending', 'Shipped', 'Delivered', 'Cancelled'];
-
-function normalizeProductInput(input, mainImage = null) {
-  return {
-    category_id: Number(input.category_id),
-    product_name: String(input.product_name || '').trim(),
-    description: String(input.description || '').trim() || null,
-    price: Number(input.price),
-    stock_quantity: Number(input.stock_quantity),
-    image: mainImage || null,
-  };
-}
-
-function normalizeCategoryInput(input) {
-  return {
-    category_name: String(input.category_name || '').trim(),
-    description: String(input.description || '').trim() || null,
-  };
-}
-
-function validateProduct(product) {
-  if (!product.category_id || !product.product_name || Number.isNaN(product.price) || Number.isNaN(product.stock_quantity)) {
-    return 'Please fill in all required product fields.';
-  }
-
-  if (product.price < 0 || product.stock_quantity < 0) {
-    return 'Price and stock quantity cannot be negative.';
-  }
-
-  return null;
-}
-
-function validateCategory(category) {
-  if (!category.category_name) {
-    return 'Please enter a category name.';
-  }
-
-  return null;
-}
+const NEXT_ORDER_ITEM_STATUSES = {
+  Pending: ['Pending', 'Shipped', 'Cancelled'],
+  Shipped: ['Shipped', 'Delivered', 'Cancelled'],
+  Delivered: ['Delivered'],
+  Cancelled: ['Cancelled'],
+};
 
 async function getAllOrders() {
   const orders = await Order.findAll({
@@ -159,88 +127,6 @@ async function getProductById(productId) {
   };
 }
 
-async function addProductImages(productId, images = []) {
-  for (const image of images) {
-    await ProductImage.create({ product_id: productId, image_path: image });
-  }
-}
-
-async function createProduct(input, options = {}) {
-  const product = normalizeProductInput(input, options.mainImage);
-  const error = validateProduct(product);
-
-  if (error) {
-    const validationError = new Error(error);
-    validationError.statusCode = 400;
-    throw validationError;
-  }
-
-  if (!product.image) {
-    const validationError = new Error('Main image is required.');
-    validationError.statusCode = 400;
-    throw validationError;
-  }
-
-  const createdProduct = await Product.create(product);
-  await addProductImages(createdProduct.id, options.galleryImages);
-}
-
-function normalizeRemoveImageIds(value) {
-  if (!value) {
-    return [];
-  }
-
-  return (Array.isArray(value) ? value : [value])
-    .map((id) => Number(id))
-    .filter((id) => Number.isInteger(id) && id > 0);
-}
-
-async function updateProduct(productId, input, options = {}) {
-  const existingProduct = await Product.findByPk(productId);
-
-  if (!existingProduct) {
-    const error = new Error('Product not found.');
-    error.statusCode = 404;
-    throw error;
-  }
-
-  const removeMainImage = input.remove_main_image === '1';
-  const nextMainImage = options.mainImage || (removeMainImage ? null : existingProduct.image);
-  const product = normalizeProductInput(input, nextMainImage);
-  const error = validateProduct(product);
-
-  if (error) {
-    const validationError = new Error(error);
-    validationError.statusCode = 400;
-    throw validationError;
-  }
-
-  if (!product.image) {
-    const validationError = new Error('Main image is required.');
-    validationError.statusCode = 400;
-    throw validationError;
-  }
-
-  await Product.update(product, { where: { id: productId } });
-
-  const removeImageIds = normalizeRemoveImageIds(input.remove_gallery_image_ids);
-
-  if (removeImageIds.length > 0) {
-    await ProductImage.destroy({
-      where: {
-        id: removeImageIds,
-        product_id: productId,
-      },
-    });
-  }
-
-  await addProductImages(productId, options.galleryImages);
-}
-
-async function deleteProduct(productId) {
-  await Product.destroy({ where: { id: productId } });
-}
-
 async function getCategories() {
   const categories = await Category.findAll({ order: [['category_name', 'ASC']] });
 
@@ -251,36 +137,6 @@ async function getCategoryById(categoryId) {
   const category = await Category.findByPk(categoryId);
 
   return category ? category.get({ plain: true }) : null;
-}
-
-async function createCategory(input) {
-  const category = normalizeCategoryInput(input);
-  const error = validateCategory(category);
-
-  if (error) {
-    const validationError = new Error(error);
-    validationError.statusCode = 400;
-    throw validationError;
-  }
-
-  await Category.create(category);
-}
-
-async function updateCategory(categoryId, input) {
-  const category = normalizeCategoryInput(input);
-  const error = validateCategory(category);
-
-  if (error) {
-    const validationError = new Error(error);
-    validationError.statusCode = 400;
-    throw validationError;
-  }
-
-  await Category.update(category, { where: { id: categoryId } });
-}
-
-async function deleteCategory(categoryId) {
-  await Category.destroy({ where: { id: categoryId } });
 }
 
 async function getUsers() {
@@ -343,23 +199,34 @@ async function updateOrderItemStatus(itemId, status) {
     throw error;
   }
 
-    const [affectedRows] = await OrderItem.update({ status }, { where: { id: itemId } });
+    const orderItem = await OrderItem.findByPk(itemId);
 
-    if (affectedRows === 0) {
+    if (!orderItem) {
       const error = new Error('Order item not found.');
       error.statusCode = 404;
       throw error;
     }
 
-    return affectedRows;
+    const currentStatus = orderItem.status;
+    const allowedStatuses = NEXT_ORDER_ITEM_STATUSES[currentStatus] || [currentStatus];
+
+    if (!allowedStatuses.includes(status)) {
+      const error = new Error(`Cannot change status from ${currentStatus} to ${status}.`);
+      error.statusCode = 400;
+      throw error;
+    }
+
+    if (status === currentStatus) {
+      return 0;
+    }
+
+    await orderItem.update({ status });
+
+    return 1;
 
 }
 
 module.exports = {
-  createCategory,
-  createProduct,
-  deleteCategory,
-  deleteProduct,
   getAllOrders,
   getCategories,
   getCategoryById,
@@ -369,8 +236,6 @@ module.exports = {
   getProducts,
   getProductSalesSummary,
   getUsers,
-  updateCategory,
-  updateProduct,
   updateUserRole,
   updateUserStatus,
   updateOrderItemStatus

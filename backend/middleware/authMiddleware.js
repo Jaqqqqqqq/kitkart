@@ -1,5 +1,10 @@
 const db = require('../models');
+const jwt = require('jsonwebtoken');
 const User = db.User;
+
+function getJwtSecret() {
+  return process.env.JWT_SECRET || 'kitkart-jwt-secret';
+}
 
 async function getUserFromToken(req) {
   if (req.session?.user?.id) {
@@ -19,12 +24,19 @@ async function getUserFromToken(req) {
     return null;
   }
 
-  return User.findOne({
-    where: {
-      token,
-      status: 'active',
-    },
-  });
+  try {
+    const decoded = jwt.verify(token, getJwtSecret());
+
+    return User.findOne({
+      where: {
+        id: decoded.id,
+        token,
+        status: 'active',
+      },
+    });
+  } catch (error) {
+    return null;
+  }
 }
 
 function getRole(req) {

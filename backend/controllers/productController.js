@@ -88,6 +88,16 @@ async function addGalleryImages(productId, files) {
   }
 }
 
+function normalizeRemoveImageIds(value) {
+  if (!value) {
+    return [];
+  }
+
+  return (Array.isArray(value) ? value : [value])
+    .map((id) => Number(id))
+    .filter((id) => Number.isInteger(id) && id > 0);
+}
+
 async function getAllProducts(req, res) {
   try {
     const products = await Product.findAll({
@@ -136,12 +146,16 @@ async function createProductApi(req, res) {
       return res.status(400).json({ success: false, message: 'Main image is required.' });
     }
 
+    if (Number(price) < 0 || Number(stock_quantity) < 0) {
+      return res.status(400).json({ success: false, message: 'Price and stock quantity cannot be negative.' });
+    }
+
     const product = await Product.create({
       category_id,
-      product_name,
-      description,
+      product_name: String(product_name).trim(),
+      description: String(description || '').trim() || null,
       price,
-      stock_quantity: stock_quantity || 0,
+      stock_quantity,
       image: getImagePath(mainImage),
     });
 
@@ -169,15 +183,40 @@ async function updateProductApi(req, res) {
     const mainImage = getUploadedFile(req, 'main_image') || req.file;
     const galleryImages = getUploadedFiles(req, 'gallery_images').slice(0, 8);
     const imagePath = getImagePath(mainImage);
+    const removeMainImage = req.body.remove_main_image === '1';
+    const nextImage = imagePath || (removeMainImage ? null : product.image);
+
+    if (!req.body.category_id || !req.body.product_name || req.body.price === undefined || req.body.stock_quantity === undefined) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
+    if (Number(req.body.price) < 0 || Number(req.body.stock_quantity) < 0) {
+      return res.status(400).json({ success: false, message: 'Price and stock quantity cannot be negative.' });
+    }
+
+    if (!nextImage) {
+      return res.status(400).json({ success: false, message: 'Main image is required.' });
+    }
 
     await product.update({
-      category_id: req.body.category_id || product.category_id,
-      product_name: req.body.product_name || product.product_name,
-      description: req.body.description || product.description,
-      price: req.body.price || product.price,
-      stock_quantity: req.body.stock_quantity || product.stock_quantity,
-      image: imagePath || product.image,
+      category_id: req.body.category_id,
+      product_name: String(req.body.product_name).trim(),
+      description: String(req.body.description || '').trim() || null,
+      price: req.body.price,
+      stock_quantity: req.body.stock_quantity,
+      image: nextImage,
     });
+
+    const removeImageIds = normalizeRemoveImageIds(req.body.remove_gallery_image_ids);
+
+    if (removeImageIds.length > 0) {
+      await ProductImage.destroy({
+        where: {
+          id: removeImageIds,
+          product_id: product.id,
+        },
+      });
+    }
 
     await addGalleryImages(product.id, galleryImages);
 
