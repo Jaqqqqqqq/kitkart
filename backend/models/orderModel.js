@@ -205,8 +205,58 @@ async function getOrderForUser(userId, orderId) {
   };
 }
 
+async function cancelOrderForUser(userId, orderId) {
+  return sequelize.transaction(async (transaction) => {
+    const order = await Order.findOne({
+      where: { id: orderId, user_id: userId },
+      include: [{ model: OrderItem }],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (!order) {
+      const error = new Error('Order not found.');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const plainOrder = order.get({ plain: true });
+    const items = plainOrder.OrderItems || [];
+
+    if (items.length === 0) {
+      const error = new Error('Order not found.');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const canCancel = items.every((item) => item.status === 'Pending');
+
+    if (!canCancel) {
+      const error = new Error('Only pending orders can be cancelled.');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    for (const item of items) {
+      await OrderItem.update(
+        { status: 'Cancelled' },
+        { where: { id: item.id }, transaction }
+      );
+
+      await Product.increment('stock_quantity', {
+        by: Number(item.quantity),
+        where: { id: item.product_id },
+        transaction,
+      });
+    }
+
+    return plainOrder.id;
+  });
+}
+
 module.exports = {
   PAYMENT_METHODS,
+  cancelOrderForUser,
   getCheckoutCart,
   createOrderFromCart,
   getOrdersForUser,

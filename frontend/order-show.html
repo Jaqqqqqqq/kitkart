@@ -3,8 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %></title>
+  <title>Order Details</title>
   <link rel="stylesheet" href="/css/catalog.css">
+  <style>
+    .status-badge {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+    .action-row {
+      margin-top: 16px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .cancel-btn[disabled] {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .notice {
+      margin-top: 12px;
+      font-size: 14px;
+      color: #64748b;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
 </head>
 <body>
   <main class="page">
@@ -12,13 +42,20 @@
       <div>
         <a href="/orders" class="back-link">Back to order history</a>
         <p class="eyebrow">Order details</p>
-        <h1>Order #<%= order.id %></h1>
-        <p class="meta-copy">Track each item, review its status, and jump back to the product page when needed.</p>
+        <h1 id="orderTitle">Order Details</h1>
+        <p class="meta-copy">Track each item, review its status, and cancel only when the order is still pending.</p>
       </div>
     </header>
 
     <section class="cart-panel">
-      <p>Payment: <strong><%= order.payment_method %></strong></p>
+      <p id="paymentLine">Payment: <strong>-</strong></p>
+
+      <div class="action-row">
+        <span id="orderStatusBadge" class="status-badge">Loading...</span>
+        <button id="cancelOrderBtn" class="button-link cancel-btn" disabled>Cancel Order</button>
+      </div>
+
+      <p id="cancelNote" class="notice"></p>
 
       <div class="cart-table-wrap">
         <table class="cart-table">
@@ -32,34 +69,149 @@
               <th>Review</th>
             </tr>
           </thead>
-          <tbody>
-            <% order.items.forEach((item) => { %>
-              <tr>
-                <td><%= item.product_name %></td>
-                <td>PHP <%= item.price.toFixed(2) %></td>
-                <td><%= item.quantity %></td>
-                <td>PHP <%= item.subtotal.toFixed(2) %></td>
-                <td><%= item.status %></td>
-                <td>
-                  <% if (item.review_id) { %>
-                    <a href="/reviews/<%= item.review_id %>/edit">Edit review</a>
-                  <% } else if (item.status === 'Delivered') { %>
-                    <a href="/shop/<%= item.product_id %>">Write review</a>
-                  <% } else { %>
-                    <span class="muted">Available after delivery</span>
-                  <% } %>
-                </td>
-              </tr>
-            <% }) %>
+          <tbody id="orderItemsBody">
+            <tr>
+              <td colspan="6">Loading order details...</td>
+            </tr>
           </tbody>
         </table>
       </div>
 
       <div class="cart-summary">
         <p></p>
-        <p>Total: PHP <strong><%= order.total.toFixed(2) %></strong></p>
+        <p>Total: PHP <strong id="orderTotal">0.00</strong></p>
       </div>
     </section>
   </main>
+
+  <script>
+    const parts = window.location.pathname.split('/');
+    const orderId = parts[2];
+    const statusRank = { Pending: 0, Shipped: 1, Delivered: 2, Cancelled: 3 };
+
+    function money(value) {
+      return Number(value || 0).toFixed(2);
+    }
+
+    function getOrderStatus(items) {
+      if (!items || items.length === 0) {
+        return 'Pending';
+      }
+
+      if (items.some((item) => item.status === 'Cancelled')) {
+        return 'Cancelled';
+      }
+
+      if (items.every((item) => item.status === 'Delivered')) {
+        return 'Delivered';
+      }
+
+      if (items.some((item) => item.status === 'Shipped')) {
+        return 'Shipped';
+      }
+
+      return 'Pending';
+    }
+
+    function renderItems(items) {
+      const body = document.getElementById('orderItemsBody');
+      body.innerHTML = '';
+
+      if (!items.length) {
+        body.innerHTML = '<tr><td colspan="6">No items found.</td></tr>';
+        return;
+      }
+
+      items.forEach((item) => {
+        const row = document.createElement('tr');
+        const reviewCell = item.review_id
+          ? `<a href="/reviews/${item.review_id}/edit">Edit review</a>`
+          : (item.status === 'Delivered' ? `<a href="/shop/${item.product_id}">Write review</a>` : '<span class="muted">Available after delivery</span>');
+
+        row.innerHTML = `
+          <td>${item.product_name}</td>
+          <td>PHP ${money(item.price)}</td>
+          <td>${item.quantity}</td>
+          <td>PHP ${money(item.subtotal)}</td>
+          <td>${item.status}</td>
+          <td>${reviewCell}</td>
+        `;
+        body.appendChild(row);
+      });
+    }
+
+    function setCancelState(status) {
+      const button = document.getElementById('cancelOrderBtn');
+      const note = document.getElementById('cancelNote');
+      const badge = document.getElementById('orderStatusBadge');
+
+      badge.textContent = status;
+      badge.style.background = status === 'Cancelled' ? '#fee2e2' : (status === 'Shipped' || status === 'Delivered' ? '#fef3c7' : '#d1fae5');
+      badge.style.color = status === 'Cancelled' ? '#991b1b' : (status === 'Shipped' || status === 'Delivered' ? '#92400e' : '#065f46');
+
+      if (status === 'Pending') {
+        button.disabled = false;
+        note.textContent = 'You can cancel this order while it is still pending.';
+      } else {
+        button.disabled = true;
+        note.textContent = 'This order can no longer be cancelled because it has already been processed.';
+      }
+    }
+
+    function loadOrder() {
+      fetch(`/api/v1/orders/${orderId}`, { credentials: 'include' })
+        .then((response) => response.json())
+        .then((data) => {
+          if (!data.success || !data.result) {
+            throw new Error(data.message || 'Order not found.');
+          }
+
+          const order = data.result;
+          const status = getOrderStatus(order.items);
+
+          document.title = `Order #${order.id}`;
+          document.getElementById('orderTitle').textContent = `Order #${order.id}`;
+          document.getElementById('paymentLine').innerHTML = `Payment: <strong>${order.payment_method}</strong>`;
+          document.getElementById('orderTotal').textContent = money(order.total);
+
+          renderItems(order.items);
+          setCancelState(status);
+
+          document.getElementById('cancelOrderBtn').addEventListener('click', function () {
+            if (this.disabled) {
+              return;
+            }
+
+            this.disabled = true;
+            fetch(`/orders/${orderId}/cancel`, {
+              method: 'POST',
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            })
+              .then((response) => response.json().then((body) => ({ ok: response.ok, body })))
+              .then(({ ok, body }) => {
+                if (!ok || !body.success) {
+                  throw new Error(body.message || 'Unable to cancel order.');
+                }
+
+                window.location.reload();
+              })
+              .catch((error) => {
+                alert(error.message || 'Unable to cancel order.');
+                this.disabled = false;
+              });
+          }, { once: true });
+        })
+        .catch((error) => {
+          document.getElementById('orderItemsBody').innerHTML = `<tr><td colspan="6">${error.message}</td></tr>`;
+          document.getElementById('cancelOrderBtn').disabled = true;
+          document.getElementById('cancelNote').textContent = 'Unable to load order details.';
+        });
+    }
+
+    loadOrder();
+  </script>
 </body>
 </html>

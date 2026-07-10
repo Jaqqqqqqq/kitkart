@@ -1,4 +1,5 @@
 const orderModel = require('../models/orderModel');
+const path = require('path');
 
 async function checkoutPage(req, res) {
   try {
@@ -78,19 +79,22 @@ async function orderHistory(req, res) {
 
 async function orderDetails(req, res) {
   try {
-    const order = await orderModel.getOrderForUser(req.session.user.id, req.params.orderId);
-
-    if (!order) {
-      return res.status(404).send('Order not found.');
-    }
-
-    return res.render('order-show', {
-      title: `Order #${order.id}`,
-      order,
-    });
+    return res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'order-show.html'));
   } catch (error) {
     console.error(error);
     return res.status(500).send('Unable to load order details.');
+  }
+}
+
+async function cancelOrder(req, res) {
+  try {
+    await orderModel.cancelOrderForUser(req.session.user.id, req.params.orderId);
+    return res.status(200).json({
+      success: true,
+      message: 'Order cancelled successfully.',
+    });
+  } catch (error) {
+    return handleApiError(res, error, 'Unable to cancel order.');
   }
 }
 
@@ -170,6 +174,7 @@ module.exports = {
   getCheckout,
   getOrders,
   getSingleOrder,
+  cancelOrder,
   placeOrder,
   confirmationPage,
   orderHistory,

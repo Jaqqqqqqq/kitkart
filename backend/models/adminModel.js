@@ -1,7 +1,12 @@
 const { Category, Order, OrderItem, Product, ProductImage, User } = require('../config/sequelize');
 
 const ORDER_ITEM_STATUSES = ['Pending', 'Shipped', 'Delivered', 'Cancelled'];
-const LOCKED_ORDER_ITEM_STATUSES = ['Shipped', 'Delivered'];
+const NEXT_ORDER_ITEM_STATUSES = {
+  Pending: ['Pending', 'Shipped', 'Cancelled'],
+  Shipped: ['Shipped', 'Delivered'],
+  Delivered: ['Delivered'],
+  Cancelled: ['Cancelled'],
+};
 
 function normalizeProductInput(input, mainImage = null) {
   return {
@@ -242,10 +247,16 @@ async function updateOrderItemStatus(itemId, status) {
     throw error;
   }
 
-  if (LOCKED_ORDER_ITEM_STATUSES.includes(orderItem.status)) {
-    const error = new Error(`This item is already ${orderItem.status.toLowerCase()} and can no longer be changed.`);
+  const allowedStatuses = NEXT_ORDER_ITEM_STATUSES[orderItem.status] || [orderItem.status];
+
+  if (!allowedStatuses.includes(status)) {
+    const error = new Error(`Cannot change status from ${orderItem.status} to ${status}.`);
     error.statusCode = 400;
     throw error;
+  }
+
+  if (status === orderItem.status) {
+    return 0;
   }
 
   const [affectedRows] = await OrderItem.update({ status }, { where: { id: itemId } });

@@ -56,7 +56,7 @@
         </thead>
         <tbody>
           <% order.items.forEach((item)=>{ 
-               const isLocked = item.status === 'Shipped' || item.status === 'Delivered';
+               const canCancel = item.status === 'Pending';
           %>
             <tr>
               <td><%= item.product_name %></td>
@@ -67,11 +67,13 @@
                 <select
                   class="itemStatus"
                   data-id="<%= item.id %>"
-                  <%= isLocked ? 'disabled' : '' %>>
+                  >
                   <% ['Pending', 'Shipped', 'Delivered', 'Cancelled'].forEach((status)=>{ %>
+                    <% const isDisabled = status === 'Cancelled' && !canCancel; %>
                     <option
                       value="<%= status %>"
-                      <%= item.status===status?"selected":"" %>>
+                      <%= item.status===status?"selected":"" %>
+                      <%= isDisabled ? 'disabled' : '' %>>
                       <%= status %>
                     </option>
                   <% }) %>
@@ -81,12 +83,12 @@
                 <button
                   class="saveStatus"
                   data-id="<%= item.id %>"
-                  <%= isLocked ? 'disabled' : '' %>>
+                  >
                   Save
                 </button>
-                <% if (isLocked) { %>
+                <% if (!canCancel) { %>
                   <div style="margin-top: 6px; font-size: 0.85rem; color: #6b7280;">
-                    Locked once <%= item.status.toLowerCase() %>.
+                    Cancellation is only allowed while pending.
                   </div>
                 <% } %>
               </td>
