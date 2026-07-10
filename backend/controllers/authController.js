@@ -47,8 +47,16 @@ async function postForgotPassword(req, res) {
       req.body.confirm_password
     );
 
+    if (wantsJson(req)) {
+      return res.status(200).json({ success: true, message: 'Password changed. You can now login.' });
+    }
+
     return res.status(200).send('Password changed. You can now login.');
   } catch (error) {
+    if (wantsJson(req)) {
+      return res.status(error.statusCode || 500).json({ success: false, message: error.message || 'Unable to change password.' });
+    }
+
     return res.status(error.statusCode || 500).send(error.message || 'Unable to change password.');
   }
 }

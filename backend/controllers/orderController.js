@@ -15,6 +15,11 @@ async function placeOrder(req, res) {
 
   try {
     const orderId = await orderModel.createOrderFromCart(req.session.user.id, selectedPaymentMethod);
+    const wantsJson = req.xhr || (req.headers.accept && req.headers.accept.indexOf('application/json') !== -1) || (req.headers['content-type'] && req.headers['content-type'].indexOf('application/json') !== -1);
+    if (wantsJson) {
+      return res.status(201).json({ success: true, message: 'Order placed successfully', orderId });
+    }
+
     return res.redirect(`/orders/${orderId}/confirmation`);
   } catch (error) {
     const statusCode = error.statusCode || 500;

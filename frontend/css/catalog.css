@@ -998,6 +998,14 @@ button:disabled { background: #b0b8c8; box-shadow: none; cursor: not-allowed; tr
   transition: all 0.3s ease;
 }
 
+/* Small layout fixes */
+.product-gallery { display:flex; gap:8px; margin-top:12px; align-items:center; }
+.product-thumb { max-width:120px; border-radius:6px; box-shadow:0 4px 8px rgba(0,0,0,0.06); }
+.editable-image-list { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.editable-image .thumb { max-width:80px; border-radius:4px; }
+.editable-image { position:relative; }
+.editable-image button { position:absolute; right:2px; top:2px; background:rgba(0,0,0,0.6); color:#fff; border:none; padding:4px 6px; border-radius:3px; cursor:pointer; }
+
 .chart-card:hover {
   transform: translateY(-3px);
   box-shadow: 0 10px 24px rgba(0, 102, 255, 0.12);

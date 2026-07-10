@@ -6,6 +6,7 @@
   <title>Edit Profile</title>
   <link rel="stylesheet" href="/css/catalog.css">
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="/js/ui.js"></script>
 </head>
 <body>
   <main class="dashboard-panel">
@@ -30,21 +31,29 @@
         $('#address').val(user.address || '');
       });
       $('#profileForm').on('submit', function (e) {
-        e.preventDefault();
-        $.ajax({
-          method: 'POST',
-          url: '/profile/edit',
-          data: {
-            first_name: $('#first_name').val(),
-            last_name: $('#last_name').val(),
-            email: $('#email').val(),
-            phone: $('#phone').val(),
-            address: $('#address').val()
-          },
-          success: function () { window.location.href = '/profile'; },
-          error: function (xhr) { alert(xhr.responseText || 'Save failed.'); }
+          e.preventDefault();
+          $.ajax({
+            method: 'POST',
+            url: '/profile/edit',
+            dataType: 'json',
+            data: {
+              first_name: $('#first_name').val(),
+              last_name: $('#last_name').val(),
+              email: $('#email').val(),
+              phone: $('#phone').val(),
+              address: $('#address').val()
+            },
+            success: function (data) {
+              if (data && data.success) {
+                showPopup(data.message || 'Profile updated.', 'success');
+                setTimeout(function () { window.location.href = '/profile'; }, 600);
+              } else {
+                showPopup(data?.message || 'Save failed.', 'error');
+              }
+            },
+            error: function (xhr) { showPopup(xhr.responseJSON?.message || xhr.responseText || 'Save failed.', 'error'); }
+          });
         });
-      });
     });
   </script>
 </body>

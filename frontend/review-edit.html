@@ -6,6 +6,7 @@
   <title>Edit Review</title>
   <link rel="stylesheet" href="/css/catalog.css">
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="/js/ui.js"></script>
 </head>
 <body>
   <main class="dashboard-panel">
@@ -28,12 +29,19 @@
           method: 'POST',
           url: '/reviews/' + reviewId + '/edit',
           data: { rating: $('#rating').val(), review_text: $('#review_text').val() },
-          success: function (data) { window.location.href = '/shop/' + (data.productId || ''); },
-          error: function (xhr) { alert(xhr.responseText || 'Save failed.'); }
+          dataType: 'json',
+          success: function (data) { if (data && data.success) { window.location.href = '/shop/' + (data.productId || ''); } else { showPopup(data?.message || 'Save failed.', 'error'); } },
+          error: function (xhr) { showPopup(xhr.responseJSON?.message || xhr.responseText || 'Save failed.', 'error'); }
         });
       });
       $('#deleteBtn').on('click', function () {
-        $.post('/reviews/' + reviewId + '/delete', function () { window.location.href = '/shop'; });
+        $.ajax({
+          method: 'POST',
+          url: '/reviews/' + reviewId + '/delete',
+          dataType: 'json',
+          success: function (data) { if (data && data.success) { window.location.href = '/shop'; } else { showPopup(data?.message || 'Delete failed.', 'error'); } },
+          error: function (xhr) { showPopup(xhr.responseJSON?.message || xhr.responseText || 'Delete failed.', 'error'); }
+        });
       });
     });
   </script>

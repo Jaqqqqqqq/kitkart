@@ -26,6 +26,7 @@
     </table>
     <p><strong>Total:</strong> <span id="orderTotal"></span></p>
   </main>
+  <script src="/js/ui.js"></script>
   <script>
     $(function () {
       const orderId = window.location.pathname.split('/').filter(Boolean).pop();
@@ -34,19 +35,26 @@
         $('#orderTitle').text('Order #' + order.id);
         $('#orderMeta').html(order.first_name + ' ' + order.last_name + '<br>' + order.email + '<br>' + order.payment_method);
         $('#orderTotal').text('PHP ' + Number(order.total).toFixed(2));
+        const STATUS_NEXT = {
+          Pending: ['Pending','Shipped','Cancelled'],
+          Shipped: ['Shipped','Delivered'],
+          Delivered: ['Delivered'],
+          Cancelled: ['Cancelled']
+        };
+
         const html = (order.items || []).map((item) => {
-          const cancelDisabled = item.status !== 'Pending' ? 'disabled' : '';
+          const allowed = STATUS_NEXT[item.status] || [item.status];
+          const options = allowed.map((s) => `<option value="${s}" ${item.status === s ? 'selected' : ''}>${s}</option>`).join('');
+
           return `
             <tr>
               <td>${item.product_name}</td>
               <td>PHP ${Number(item.price).toFixed(2)}</td>
               <td>${item.quantity}</td>
               <td>
-                <select class="status-select" data-id="${item.id}">
-                  ${['Pending','Shipped','Delivered','Cancelled'].map((status) => `<option value="${status}" ${item.status === status ? 'selected' : ''} ${(status === 'Cancelled' && item.status !== 'Pending') ? 'disabled' : ''}>${status}</option>`).join('')}
-                </select>
+                <select class="status-select" data-id="${item.id}">${options}</select>
               </td>
-              <td><button class="update-status-btn" data-id="${item.id}" ${cancelDisabled}>Update</button></td>
+              <td><button class="update-status-btn" data-id="${item.id}">Update</button></td>
             </tr>`;
         }).join('');
         $('#orderItemsTable tbody').html(html || '<tr><td colspan="5">No items.</td></tr>');
@@ -61,11 +69,11 @@
           contentType: 'application/json',
           data: JSON.stringify({ status }),
           success: function () {
-            alert('Updated.');
+            showPopup('Updated.', 'success');
             location.reload();
           },
           error: function (xhr) {
-            alert(xhr.responseJSON?.message || 'Update failed.');
+            showPopup(xhr.responseJSON?.message || 'Update failed.', 'error');
           }
         });
       });

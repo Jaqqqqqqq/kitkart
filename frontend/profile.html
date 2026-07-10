@@ -57,14 +57,38 @@
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script>
     $(function () {
-      $.get('/api/v1/users', function (response) {
-        const user = response.rows.find((item) => String(item.id) === String(sessionStorage.getItem('userId') || ''));
-        if (!user) return;
-        $('#first_name').val(user.first_name || '');
-        $('#last_name').val(user.last_name || '');
-        $('#email').val(user.email || '');
-        $('#phone').val(user.phone || '');
-        $('#address').val(user.address || '');
+      // Try to fetch the current user (works with session cookie or token-based auth)
+      $.getJSON('/api/v1/me', function (response) {
+        const user = (response && response.result) || response || null;
+        if (user && user.id) {
+          $('#first_name').val(user.first_name || '');
+          $('#last_name').val(user.last_name || '');
+          $('#email').val(user.email || '');
+          $('#phone').val(user.phone || '');
+          $('#address').val(user.address || '');
+          return;
+        }
+        // fallback to listing users and matching sessionStorage.userId
+        $.get('/api/v1/users', function (resp) {
+          const user = resp.rows.find((item) => String(item.id) === String(sessionStorage.getItem('userId') || ''));
+          if (!user) return;
+          $('#first_name').val(user.first_name || '');
+          $('#last_name').val(user.last_name || '');
+          $('#email').val(user.email || '');
+          $('#phone').val(user.phone || '');
+          $('#address').val(user.address || '');
+        });
+      }).fail(function () {
+        // fallback if /me is not available
+        $.get('/api/v1/users', function (resp) {
+          const user = resp.rows.find((item) => String(item.id) === String(sessionStorage.getItem('userId') || ''));
+          if (!user) return;
+          $('#first_name').val(user.first_name || '');
+          $('#last_name').val(user.last_name || '');
+          $('#email').val(user.email || '');
+          $('#phone').val(user.phone || '');
+          $('#address').val(user.address || '');
+        });
       });
 
       $('#profileForm').on('submit', function (event) {

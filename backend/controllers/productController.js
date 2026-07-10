@@ -81,13 +81,23 @@ function normalizeRemoveImageIds(value) {
 async function getAllProducts(req, res) {
   try {
     const products = await Product.findAll({
-      include: [{ model: Category, attributes: ['category_name'] }],
+      include: [
+        { model: Category, attributes: ['category_name'] },
+        { model: ProductImage, attributes: ['id', 'image_path'] },
+      ],
       order: [['product_name', 'ASC']],
+    });
+
+    const rows = products.map((p) => {
+      const item = p.get({ plain: true });
+      item.gallery_images = (item.ProductImages || []).map((i) => ({ id: i.id, image_path: i.image_path }));
+      // keep legacy `image` for main image compatibility
+      return item;
     });
 
     return res.status(200).json({
       success: true,
-      rows: products,
+      rows,
     });
   } catch (error) {
     console.log(error);
@@ -98,14 +108,20 @@ async function getAllProducts(req, res) {
 async function getSingleProduct(req, res) {
   try {
     const product = await Product.findByPk(req.params.id, {
-      include: [{ model: Category, attributes: ['category_name'] }],
+      include: [
+        { model: Category, attributes: ['category_name'] },
+        { model: ProductImage, attributes: ['id', 'image_path'] },
+      ],
     });
 
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
-    return res.status(200).json({ success: true, result: product });
+    const result = product.get({ plain: true });
+    result.gallery_images = (result.ProductImages || []).map((i) => ({ id: i.id, image_path: i.image_path }));
+
+    return res.status(200).json({ success: true, result });
   } catch (error) {
     console.log(error);
     return res.status(500).json({ success: false, message: 'Error fetching product' });
@@ -219,7 +235,9 @@ async function deleteProductApi(req, res) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
-    await product.destroy();
+      // remove associated gallery images first to avoid FK constraint errors
+      await ProductImage.destroy({ where: { product_id: product.id } });
+      await product.destroy();
 
     return res.status(200).json({
       success: true,

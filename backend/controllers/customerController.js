@@ -36,7 +36,12 @@ async function updateProfile(req, res) {
             ...updatedUser
         };
 
-        res.redirect("/profile?updated=1");
+            const wantsJson = req.xhr || (req.headers.accept && req.headers.accept.indexOf('application/json') !== -1) || (req.headers['content-type'] && req.headers['content-type'].indexOf('application/json') !== -1);
+            if (wantsJson) {
+                return res.status(200).json({ success: true, message: 'Profile updated', user: req.session.user });
+            }
+
+            return res.redirect("/profile?updated=1");
 
     }
 
@@ -62,9 +67,19 @@ async function updatePassword(req, res) {
             req.body.confirm_password
         );
 
+        const wantsJson = req.xhr || (req.headers.accept && req.headers.accept.indexOf('application/json') !== -1) || (req.headers['content-type'] && req.headers['content-type'].indexOf('application/json') !== -1);
+        if (wantsJson) {
+            return res.status(200).json({ success: true, message: 'Password changed successfully.' });
+        }
+
         return res.status(200).send("Password changed successfully.");
     } catch (err) {
         console.log(err);
+
+        const wantsJson = req.xhr || (req.headers.accept && req.headers.accept.indexOf('application/json') !== -1) || (req.headers['content-type'] && req.headers['content-type'].indexOf('application/json') !== -1);
+        if (wantsJson) {
+            return res.status(err.statusCode || 500).json({ success: false, message: err.message || 'Unable to change password.' });
+        }
 
         return res.status(err.statusCode || 500).send(err.message || "Unable to change password.");
     }

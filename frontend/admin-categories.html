@@ -57,7 +57,9 @@
             </tr>
           `);
         });
-        $('#categoriesTable').DataTable({ pageLength: 10, lengthChange: false, order: [[0, 'asc']] });
+        if (!$.fn.DataTable.isDataTable('#categoriesTable')) {
+          $('#categoriesTable').DataTable({ pageLength: 10, lengthChange: false, order: [[0, 'asc']] });
+        }
       });
     });
   </script>

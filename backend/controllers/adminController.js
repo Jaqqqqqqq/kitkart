@@ -255,6 +255,13 @@ async function deleteCategoryApi(req, res) {
       return res.status(404).json({ success: false, message: 'Category not found' });
     }
 
+    // prevent deleting a category that still has products
+    const Product = require('../config/sequelize').Product;
+    const count = await Product.count({ where: { category_id: category.id } });
+    if (count > 0) {
+      return res.status(400).json({ success: false, message: 'Cannot delete category with existing products. Remove products first.' });
+    }
+
     await category.destroy();
 
     return res.status(200).json({

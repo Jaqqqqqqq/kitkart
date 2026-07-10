@@ -6,6 +6,7 @@
   <title>Product Form</title>
   <link rel="stylesheet" href="/css/catalog.css">
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="/js/ui.js"></script>
 </head>
 <body>
   <main class="dashboard-panel">
@@ -17,7 +18,19 @@
       <div class="form-field"><label>Description</label><textarea id="description" name="description"></textarea></div>
       <div class="form-field"><label>Price</label><input id="price" name="price" type="number" step="0.01" min="0" required></div>
       <div class="form-field"><label>Stock</label><input id="stock_quantity" name="stock_quantity" type="number" min="0" required></div>
-      <div class="form-field"><label>Main Image</label><input id="main_image" name="main_image" type="file" accept="image/*"></div>
+      <div class="form-field">
+        <label>Main Image</label>
+        <div class="editable-image-list">
+          <div class="editable-image main-image-placeholder"></div>
+        </div>
+        <input id="main_image" name="main_image" type="file" accept="image/*">
+        <input type="hidden" id="remove_main_image" name="remove_main_image" value="0">
+      </div>
+      <div class="form-field">
+        <label>Gallery Images (up to 8)</label>
+        <div id="galleryPreview" class="editable-image-list"></div>
+        <input id="gallery_images" name="gallery_images" type="file" accept="image/*" multiple>
+      </div>
       <button type="submit">Save</button>
     </form>
   </main>
@@ -39,6 +52,24 @@
           $('#description').val(product.description || '');
           $('#price').val(product.price);
           $('#stock_quantity').val(product.stock_quantity);
+
+          // mark that a main image exists unless empty
+          const hasMain = !!product.image;
+          $('#productForm').data('has-main-image', hasMain ? 'true' : 'false');
+
+          // render main image
+          if (product.image) {
+            const url = product.image.startsWith('/') || product.image.startsWith('http') ? product.image : '/images/' + product.image;
+            $('.main-image-placeholder').html(`<div class="editable-image"><img src="${url}" class="thumb"><button type="button" class="js-remove-main-image">Remove</button></div>`);
+          }
+
+          // render gallery images
+          const gallery = product.gallery_images || [];
+          $('#galleryPreview').empty();
+          gallery.forEach(function (img) {
+            const url = img.image_path.startsWith('/') || img.image_path.startsWith('http') ? img.image_path : '/images/' + img.image_path;
+            $('#galleryPreview').append(`<div class="editable-image"><img src="${url}" class="thumb"><button type="button" class="js-remove-gallery-image" data-id="${img.id}">Remove</button></div>`);
+          });
         });
       }
       $('#productForm').on('submit', function (e) {
@@ -51,7 +82,7 @@
           processData: false,
           contentType: false,
           success: function () { window.location.href = '/admin/products'; },
-          error: function (xhr) { alert(xhr.responseJSON?.message || 'Save failed.'); }
+          error: function (xhr) { showPopup(xhr.responseJSON?.message || 'Save failed.', 'error'); }
         });
       });
     });

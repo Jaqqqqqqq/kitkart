@@ -6,6 +6,7 @@
   <title>Product</title>
   <link rel="stylesheet" href="/css/catalog.css">
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="/js/ui.js"></script>
 </head>
 <body>
   <main class="dashboard-panel">
@@ -15,6 +16,30 @@
     <p id="productPrice"></p>
     <p id="productStock"></p>
     <p id="productDescription"></p>
+    <div id="productGallery" class="product-gallery"></div>
+    <section class="reviews-panel">
+      <h2>Reviews</h2>
+      <div id="reviewsList" class="review-list"></div>
+      <div class="review-form">
+        <h3>Write a review</h3>
+        <form id="writeReviewForm">
+          <label>Rating
+            <select id="rating" name="rating">
+              <option value="5">5</option>
+              <option value="4">4</option>
+              <option value="3">3</option>
+              <option value="2">2</option>
+              <option value="1">1</option>
+            </select>
+          </label>
+          <label>Review
+            <textarea id="review_text" name="review_text" rows="4"></textarea>
+          </label>
+          <button type="submit">Submit Review</button>
+          <p id="reviewMessage" class="hidden"></p>
+        </form>
+      </div>
+    </section>
   </main>
   <script>
     $(function () {
@@ -26,6 +51,80 @@
         $('#productPrice').text('PHP ' + Number(product.price).toFixed(2));
         $('#productStock').text('Stock: ' + (product.stock_quantity || 0));
         $('#productDescription').text(product.description || 'No description available.');
+        // render gallery
+        const gallery = product.gallery_images || [];
+        const $g = $('#productGallery');
+        $g.empty();
+        if (gallery.length) {
+          gallery.forEach(function (img) {
+            const url = img.image_path.startsWith('/') || img.image_path.startsWith('http') ? img.image_path : '/images/' + img.image_path;
+            $g.append(`<img src="${url}" class="product-thumb">`);
+          });
+        } else if (product.image) {
+          const url = product.image.startsWith('/') || product.image.startsWith('http') ? product.image : '/images/' + product.image;
+          $g.append(`<img src="${url}" class="product-thumb">`);
+        }
+
+        // load reviews
+        $.getJSON('/api/v1/products/' + id + '/reviews', function (resp) {
+          if (!resp.success) return;
+          const rows = resp.rows || [];
+          const $list = $('#reviewsList');
+          $list.empty();
+          if (!rows.length) {
+            $list.html('<p class="muted">No reviews yet.</p>');
+          } else {
+            rows.forEach(function (r) {
+              $list.append(`<div class="review-card"><h4>${r.user_name || 'Customer'}</h4><p>${r.review_text}</p><span>${r.rating}/5</span></div>`);
+            });
+          }
+        });
+
+        // submit review form (supports token or session)
+        $('#writeReviewForm').on('submit', function (e) {
+          e.preventDefault();
+          const rating = $('#rating').val();
+          const review_text = $('#review_text').val();
+          const token = sessionStorage.getItem('token');
+
+          if (token) {
+            // token-based API
+            fetch('/api/v1/reviews', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+              body: JSON.stringify({ product_id: id, rating, review_text }),
+            }).then((r) => r.json()).then((body) => {
+              if (body.success) {
+                showPopup(body.message || 'Review submitted.', 'success');
+                setTimeout(() => location.reload(), 700);
+              } else {
+                showPopup(body.message || 'Unable to submit review.', 'error');
+              }
+            }).catch((err) => { showPopup(err.message || 'Unable to submit review.', 'error'); });
+          } else {
+            // session-based POST — ask JSON
+            fetch('/products/' + id + '/reviews', {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+              body: new URLSearchParams({ rating, review_text }),
+            }).then((r) => {
+              if (r.redirected) {
+                window.location = r.url;
+                return null;
+              }
+              return r.json().catch(() => null);
+            }).then((body) => {
+              if (!body) return;
+              if (body.success) {
+                showPopup(body.message || 'Review submitted.', 'success');
+                setTimeout(() => location.reload(), 700);
+              } else {
+                showPopup(body.message || 'Unable to submit review.', 'error');
+              }
+            }).catch((err) => { showPopup(err.message || 'Unable to submit review.', 'error'); });
+          }
+        });
       });
     });
   </script>

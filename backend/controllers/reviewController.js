@@ -2,17 +2,27 @@ const reviewModel = require('../models/reviewModel');
 const path = require('path');
 
 function renderError(res, statusCode, message) {
+  const req = res.req;
+  if (req && (req.xhr || (req.headers.accept && req.headers.accept.indexOf('application/json') !== -1) || (req.headers['content-type'] && req.headers['content-type'].indexOf('application/json') !== -1))) {
+    return res.status(statusCode).json({ success: false, message });
+  }
+
   return res.status(statusCode).send(message);
 }
 
 async function create(req, res) {
   try {
     await reviewModel.createReview(
-      req.session.user.id,
+      (req.user && req.user.id) || (req.session && req.session.user && req.session.user.id),
       req.params.productId,
       req.body.rating,
       req.body.review_text
     );
+
+    const wantsJson = req.xhr || (req.headers.accept && req.headers.accept.indexOf('application/json') !== -1) || (req.headers['content-type'] && req.headers['content-type'].indexOf('application/json') !== -1);
+    if (wantsJson) {
+      return res.status(201).json({ success: true, message: 'Review created successfully' });
+    }
 
     return res.redirect(`/shop/${req.params.productId}`);
   } catch (error) {
@@ -28,7 +38,8 @@ async function create(req, res) {
 
 async function edit(req, res) {
   try {
-    const review = await reviewModel.getReviewForUser(req.params.reviewId, req.session.user.id);
+    const userId = (req.user && req.user.id) || (req.session && req.session.user && req.session.user.id);
+    const review = await reviewModel.getReviewForUser(req.params.reviewId, userId);
 
     if (!review) {
       return res.status(404).send('Review not found.');
@@ -45,10 +56,15 @@ async function update(req, res) {
   try {
     const productId = await reviewModel.updateReview(
       req.params.reviewId,
-      req.session.user.id,
+      (req.user && req.user.id) || (req.session && req.session.user && req.session.user.id),
       req.body.rating,
       req.body.review_text
     );
+
+    const wantsJson = req.xhr || (req.headers.accept && req.headers.accept.indexOf('application/json') !== -1) || (req.headers['content-type'] && req.headers['content-type'].indexOf('application/json') !== -1);
+    if (wantsJson) {
+      return res.status(200).json({ success: true, message: 'Review updated successfully', productId });
+    }
 
     return res.redirect(`/shop/${productId}`);
   } catch (error) {
@@ -56,22 +72,29 @@ async function update(req, res) {
 
     if (statusCode === 500) {
       console.error(error);
-      return res.status(500).send('Unable to update review.');
+      return renderError(res, 500, 'Unable to update review.');
     }
 
-    const review = await reviewModel.getReviewForUser(req.params.reviewId, req.session.user.id);
+    const userId = (req.user && req.user.id) || (req.session && req.session.user && req.session.user.id);
+    const review = await reviewModel.getReviewForUser(req.params.reviewId, userId);
 
     if (!review) {
-      return res.status(statusCode).send(error.message);
+      return renderError(res, statusCode, error.message);
     }
 
-    return res.status(statusCode).send(error.message);
+    return renderError(res, statusCode, error.message);
   }
 }
 
 async function remove(req, res) {
   try {
-    const productId = await reviewModel.deleteReview(req.params.reviewId, req.session.user.id);
+    const userId = (req.user && req.user.id) || (req.session && req.session.user && req.session.user.id);
+    const productId = await reviewModel.deleteReview(req.params.reviewId, userId);
+    const wantsJson = req.xhr || (req.headers.accept && req.headers.accept.indexOf('application/json') !== -1) || (req.headers['content-type'] && req.headers['content-type'].indexOf('application/json') !== -1);
+    if (wantsJson) {
+      return res.status(200).json({ success: true, message: 'Review deleted successfully', productId });
+    }
+
     return res.redirect(`/shop/${productId}`);
   } catch (error) {
     const statusCode = error.statusCode || 500;
@@ -80,7 +103,7 @@ async function remove(req, res) {
       console.error(error);
     }
 
-    return res.status(statusCode).send(error.message || 'Unable to delete review.');
+    return renderError(res, statusCode, error.message || 'Unable to delete review.');
   }
 }
 

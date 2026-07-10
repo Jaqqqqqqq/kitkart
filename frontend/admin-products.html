@@ -48,7 +48,13 @@
         $body.empty();
 
         products.forEach(function (product) {
-          const imageUrl = product.image ? (product.image.startsWith('/') || product.image.startsWith('http') ? product.image : '/images/' + product.image) : '';
+          let imagePath = '';
+          if (product.gallery_images && product.gallery_images.length) {
+            imagePath = product.gallery_images[0].image_path;
+          } else if (product.image) {
+            imagePath = product.image;
+          }
+          const imageUrl = imagePath ? (imagePath.startsWith('/') || imagePath.startsWith('http') ? imagePath : '/images/' + imagePath) : '';
           $body.append(`
             <tr id="product-row-${product.id}">
               <td>${product.product_name}</td>
@@ -66,7 +72,9 @@
           `);
         });
 
-        $('#productsTable').DataTable({ pageLength: 10, lengthChange: false, order: [[0, 'asc']] });
+        if (!$.fn.DataTable.isDataTable('#productsTable')) {
+          $('#productsTable').DataTable({ pageLength: 10, lengthChange: false, order: [[0, 'asc']] });
+        }
       });
     });
   </script>

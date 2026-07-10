@@ -84,6 +84,7 @@
     </section>
   </main>
 
+  <script src="/js/ui.js"></script>
   <script>
     const parts = window.location.pathname.split('/');
     const orderId = parts[2];
@@ -198,10 +199,10 @@
 
                 window.location.reload();
               })
-              .catch((error) => {
-                alert(error.message || 'Unable to cancel order.');
-                this.disabled = false;
-              });
+                .catch((error) => {
+                  showPopup(error.message || 'Unable to cancel order.', 'error');
+                  this.disabled = false;
+                });
           }, { once: true });
         })
         .catch((error) => {
