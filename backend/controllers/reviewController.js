@@ -33,7 +33,7 @@ async function edit(req, res) {
       return res.status(404).send('Review not found.');
     }
 
-    return res.render('reviews/edit', {
+    return res.render('review-edit', {
       title: 'Edit Review',
       review,
       error: null,
@@ -68,7 +68,7 @@ async function update(req, res) {
       return res.status(statusCode).send(error.message);
     }
 
-    return res.status(statusCode).render('reviews/edit', {
+    return res.status(statusCode).render('review-edit', {
       title: 'Edit Review',
       review: {
         ...review,

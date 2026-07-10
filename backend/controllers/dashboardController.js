@@ -90,7 +90,7 @@ async function getChartData() {
 }
 
 function dashboard(req, res) {
-  return res.render('admin/dashboard', {
+  return res.render('admin-dashboard', {
     title: 'Dashboard',
     currentUser: req.session.user,
   });
@@ -100,7 +100,7 @@ async function charts(req, res) {
   try {
     const chartData = await getChartData();
 
-    return res.render('admin/charts', {
+    return res.render('admin-charts', {
       title: 'Charts',
       currentUser: req.session.user,
       chartData,

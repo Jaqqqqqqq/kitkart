@@ -1,5 +1,5 @@
 function home(req, res) {
-  res.render('customer/home', {
+  res.render('home', {
     title: 'Home',
     currentUser: req.session.user,
   });
@@ -14,7 +14,7 @@ async function getCurrentUser(req) {
 async function profile(req, res) {
     const currentUser = await getCurrentUser(req);
 
-    res.render("customer/profile", {
+    res.render("profile", {
         title: "Profile",
         currentUser,
         error: null,
@@ -48,7 +48,7 @@ async function updateProfile(req, res) {
 
         console.log(err);
 
-        res.status(err.statusCode || 500).render("customer/profile", {
+        res.status(err.statusCode || 500).render("profile", {
             title: "Profile",
             currentUser: {
                 ...req.session.user,
@@ -63,7 +63,7 @@ async function updateProfile(req, res) {
 }
 
 function changePasswordPage(req, res) {
-    res.render("customer/change-password", {
+    res.render("change-password", {
         title: "Change Password",
         error: null,
         success: null
@@ -78,7 +78,7 @@ async function updatePassword(req, res) {
             req.body.confirm_password
         );
 
-        return res.render("customer/change-password", {
+        return res.render("change-password", {
             title: "Change Password",
             error: null,
             success: "Password changed successfully."
@@ -86,7 +86,7 @@ async function updatePassword(req, res) {
     } catch (err) {
         console.log(err);
 
-        return res.status(err.statusCode || 500).render("customer/change-password", {
+        return res.status(err.statusCode || 500).render("change-password", {
             title: "Change Password",
             error: err.message || "Unable to change password.",
             success: null

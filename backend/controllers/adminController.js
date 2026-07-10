@@ -1,7 +1,7 @@
 const adminModel = require('../models/adminModel');
 const reviewModel = require('../models/reviewModel');
 const db = require('../models');
-const { sendTransactionUpdateEmail } = require('../services/mailService');
+const { buildTransactionUpdateEmail, sendTransactionUpdateEmail } = require('../services/mailService');
 const { generateReceiptPdf } = require('../services/receiptService');
 const Category = db.Category;
 
@@ -30,7 +30,7 @@ async function orders(req, res) {
   try {
     const allOrders = await adminModel.getAllOrders();
 
-    return res.render('admin/orders/index', {
+    return res.render('admin-orders', {
       title: 'All Orders',
       orders: allOrders,
     });
@@ -48,7 +48,7 @@ async function orderDetails(req, res) {
       return res.status(404).send('Order not found.');
     }
 
-    return res.render('admin/orders/show', {
+    return res.render('admin-order-show', {
       title: `Order #${order.id}`,
       order,
     });
@@ -62,7 +62,7 @@ async function products(req, res) {
   try {
     const allProducts = await adminModel.getProducts();
 
-    return res.render('admin/products/index', {
+    return res.render('admin-products', {
       title: 'Manage Products',
       products: allProducts,
     });
@@ -76,7 +76,7 @@ async function newProduct(req, res) {
   try {
     const categories = await adminModel.getCategories();
 
-    return res.render('admin/products/form', {
+    return res.render('admin-product-form', {
       title: 'Add Product',
       action: '/admin/products',
       product: productFormDefaults(),
@@ -100,7 +100,7 @@ async function editProduct(req, res) {
       return res.status(404).send('Product not found.');
     }
 
-    return res.render('admin/products/form', {
+    return res.render('admin-product-form', {
       title: 'Edit Product',
       action: `/admin/products/${product.id}`,
       product: productFormDefaults(product),
@@ -117,7 +117,7 @@ async function categories(req, res) {
   try {
     const allCategories = await adminModel.getCategories();
 
-    return res.render('admin/categories/index', {
+    return res.render('admin-categories', {
       title: 'Manage Categories',
       categories: allCategories,
     });
@@ -128,7 +128,7 @@ async function categories(req, res) {
 }
 
 function renderCategoryForm(res, title, action, category, error = null, statusCode = 200) {
-  return res.status(statusCode).render('admin/categories/form', {
+  return res.status(statusCode).render('admin-category-form', {
     title,
     action,
     category: categoryFormDefaults(category),
@@ -159,7 +159,7 @@ async function users(req, res) {
   try {
     const allUsers = await adminModel.getUsers();
 
-    return res.render('admin/users/index', {
+    return res.render('admin-users', {
       title: 'User Accounts',
       users: allUsers,
     });
@@ -173,7 +173,7 @@ async function reviews(req, res) {
   try {
     const allReviews = await reviewModel.getReviewsForAdmin();
 
-    return res.render('admin/reviews/index', {
+    return res.render('admin-reviews', {
       title: 'Customer Reviews',
       reviews: allReviews,
     });
@@ -334,119 +334,65 @@ async function deleteCategoryApi(req, res) {
   }
 }
 
-async function updateOrderItemStatus(req,res){
+async function updateOrderItemStatus(req, res) {
+  try {
+    console.log('Update order status request:', {
+      itemId: req.params.itemId,
+      status: req.body.status,
+      method: req.method,
+      user: req.session?.user?.email || 'No session',
+    });
 
-    try{
-        console.log('Update order status request:', {
-            itemId: req.params.itemId,
-            status: req.body.status,
-            method: req.method,
-            user: req.session?.user?.email || 'No session'
+    await adminModel.updateOrderItemStatus(req.params.itemId, req.body.status);
+
+    const order = await adminModel.getOrderByItemId(req.params.itemId);
+    let emailStatus = 'sent';
+
+    if (order) {
+      try {
+        const receiptPdf = await generateReceiptPdf(order);
+        const mailResult = await sendTransactionUpdateEmail({
+          to: order.email,
+          subject: `KitKart Order #${order.id} Status Updated`,
+          html: buildTransactionUpdateEmail({ order, status: req.body.status }),
+          attachments: [
+            {
+              filename: `kitkart-order-${order.id}-receipt.pdf`,
+              content: receiptPdf,
+              contentType: 'application/pdf',
+            },
+          ],
         });
 
-        await adminModel.updateOrderItemStatus(
-
-            req.params.itemId,
-            req.body.status
-
-        );
-
-        const order = await adminModel.getOrderByItemId(req.params.itemId);
-        let emailStatus = 'sent';
-
-        if (order) {
-          try {
-                const receiptPdf = await generateReceiptPdf(order);
-                const updatedStatus = String(req.body.status || '').toLowerCase();
-
-                const mailResult = await sendTransactionUpdateEmail({
-                    to: order.email,
-                    subject: `KitKart Order #${order.id} Status Updated`,
-                    html: `
-                        <div style="margin:0;background:#f8fafc;padding:24px 0;font-family:Arial,sans-serif;color:#0f172a;">
-                          <div style="max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;box-shadow:0 16px 40px rgba(15,23,42,0.08);">
-                            <div style="background:linear-gradient(135deg,#0f766e,#14b8a6);padding:28px 32px;color:#ffffff;">
-                              <div style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;opacity:.9;">KitKart</div>
-                              <div style="font-size:28px;font-weight:700;margin-top:8px;">Order status updated</div>
-                              <div style="font-size:14px;opacity:.95;margin-top:8px;">Order #${order.id} is now <strong>${req.body.status}</strong>.</div>
-                            </div>
-
-                            <div style="padding:32px;">
-                              <p style="font-size:16px;line-height:1.6;margin:0 0 18px;">Hello ${order.first_name},</p>
-                              <p style="font-size:14px;line-height:1.7;color:#334155;margin:0 0 18px;">We’ve updated the status of your order and attached a polished PDF receipt for your records.</p>
-
-                              <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:18px 20px;margin:0 0 24px;">
-                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-                                  <tr>
-                                    <td style="padding:6px 0;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:.08em;">Order</td>
-                                    <td style="padding:6px 0;color:#0f172a;font-weight:700;text-align:right;">#${order.id}</td>
-                                  </tr>
-                                  <tr>
-                                    <td style="padding:6px 0;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:.08em;">Status</td>
-                                    <td style="padding:6px 0;color:#0f172a;font-weight:700;text-align:right;">${req.body.status}</td>
-                                  </tr>
-                                  <tr>
-                                    <td style="padding:6px 0;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:.08em;">Customer</td>
-                                    <td style="padding:6px 0;color:#0f172a;font-weight:700;text-align:right;">${order.first_name} ${order.last_name}</td>
-                                  </tr>
-                                </table>
-                              </div>
-
-                              <div style="display:block;background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:16px 18px;color:#9a3412;font-size:13px;line-height:1.6;">
-                                Your receipt PDF is attached below. If you need help, reply to this email and we’ll take care of it.
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                    `,
-                    attachments: [
-                        {
-                            filename: `kitkart-order-${order.id}-receipt.pdf`,
-                            content: receiptPdf,
-                            contentType: 'application/pdf',
-                        },
-                    ],
-                });
-
-                emailStatus = mailResult?.skipped ? 'skipped' : 'sent';
-            } catch (mailError) {
-                emailStatus = 'failed';
-                console.error('Unable to send transaction update email:', mailError);
-            }
-        }
-
-        res.json({
-
-            success:true,
-            message: emailStatus === 'sent'
-                ? "Updated. Email receipt sent."
-                : emailStatus === 'skipped'
-                    ? "Updated. Email skipped because Mailtrap is not configured."
-                    : "Updated. Email receipt could not be sent.",
-            emailStatus
-
-        });
-
+        emailStatus = mailResult?.skipped ? 'skipped' : 'sent';
+      } catch (mailError) {
+        emailStatus = 'failed';
+        console.error('Unable to send transaction update email:', mailError);
+      }
     }
 
-    catch(err){
-        console.error('Error updating order status:', {
-            itemId: req.params.itemId,
-            error: err.message,
-            stack: err.stack
-        });
+    return res.json({
+      success: true,
+      message: emailStatus === 'sent'
+        ? 'Updated. Email receipt sent.'
+        : emailStatus === 'skipped'
+          ? 'Updated. Email skipped because Mailtrap is not configured.'
+          : 'Updated. Email receipt could not be sent.',
+      emailStatus,
+    });
+  } catch (err) {
+    console.error('Error updating order status:', {
+      itemId: req.params.itemId,
+      error: err.message,
+      stack: err.stack,
+    });
 
-        res.status(err.statusCode || 500).json({
-
-            success:false,
-            message:err.message || 'Unable to update item status.'
-
-        });
-
-    }
-
+    return res.status(err.statusCode || 500).json({
+      success: false,
+      message: err.message || 'Unable to update item status.',
+    });
+  }
 }
-
 module.exports = {
   categories,
   createCategoryApi,

@@ -1,5 +1,6 @@
 const express = require('express');
 const multer = require('multer');
+const path = require('path');
 
 const authController = require('../controllers/authController');
 const adminController = require('../controllers/adminController');
@@ -11,7 +12,7 @@ const reviewController = require('../controllers/reviewController');
 const { isAuthenticatedUser, authorizeRoles } = require('../middleware/authMiddleware');
 
 const router = express.Router();
-const upload = multer({ dest: 'frontend/public/images/' });
+const upload = multer({ dest: path.resolve(__dirname, '..', '..', 'frontend', 'images') });
 const productUpload = upload.any();
 
 router.post('/register', authController.registerUser);

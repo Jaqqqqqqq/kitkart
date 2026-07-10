@@ -35,7 +35,7 @@ async function showCart(req, res) {
   try {
     const cartData = await cartModel.getCartContents(req.session.user.id);
 
-    res.render('cart/index', {
+    res.render('cart', {
       title: 'My Cart',
       items: cartData.items,
       total: cartData.total,

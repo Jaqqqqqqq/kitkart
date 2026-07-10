@@ -12,7 +12,7 @@ async function index(req, res) {
       productModel.getAllCategories(),
     ]);
 
-    res.render('products/index', {
+    res.render('products', {
       title: 'School Supplies Catalog',
       products,
       categories,
@@ -37,7 +37,7 @@ async function show(req, res) {
       reviewModel.canUserReviewProduct(req.session.user.id, req.params.id),
     ]);
 
-    return res.render('products/show', {
+    return res.render('product-show', {
       title: product.product_name,
       product,
       reviews,

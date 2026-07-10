@@ -4,7 +4,7 @@ async function checkoutPage(req, res) {
   try {
     const cart = await orderModel.getCheckoutCart(req.session.user.id);
 
-    res.render('orders/checkout', {
+    res.render('checkout', {
       title: 'Checkout',
       items: cart.items,
       total: cart.total,
@@ -33,7 +33,7 @@ async function placeOrder(req, res) {
 
     const cart = await orderModel.getCheckoutCart(req.session.user.id);
 
-    return res.status(statusCode).render('orders/checkout', {
+    return res.status(statusCode).render('checkout', {
       title: 'Checkout',
       items: cart.items,
       total: cart.total,
@@ -52,7 +52,7 @@ async function confirmationPage(req, res) {
       return res.status(404).send('Order not found.');
     }
 
-    return res.render('orders/confirmation', {
+    return res.render('order-confirmation', {
       title: 'Order Confirmed',
       order,
     });
@@ -66,7 +66,7 @@ async function orderHistory(req, res) {
   try {
     const orders = await orderModel.getOrdersForUser(req.session.user.id);
 
-    res.render('orders/history', {
+    res.render('order-history', {
       title: 'Order History',
       orders,
     });
@@ -84,7 +84,7 @@ async function orderDetails(req, res) {
       return res.status(404).send('Order not found.');
     }
 
-    return res.render('orders/show', {
+    return res.render('order-show', {
       title: `Order #${order.id}`,
       order,
     });

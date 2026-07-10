@@ -27,15 +27,15 @@ function getJwtSecret() {
 }
 
 function getLogin(req, res) {
-  res.render('auth/login', { title: 'Login', error: null, oldInput: {} });
+  res.render('login', { title: 'Login', error: null, oldInput: {} });
 }
 
 function getRegister(req, res) {
-  res.render('auth/register', { title: 'Register', error: null, oldInput: {} });
+  res.render('register', { title: 'Register', error: null, oldInput: {} });
 }
 
 function getForgotPassword(req, res) {
-  res.render('auth/forgot-password', {
+  res.render('forgot-password', {
     title: 'Forgot Password',
     error: null,
     success: null,
@@ -51,14 +51,14 @@ async function postForgotPassword(req, res) {
       req.body.confirm_password
     );
 
-    return res.render('auth/forgot-password', {
+    return res.render('forgot-password', {
       title: 'Forgot Password',
       error: null,
       success: 'Password changed. You can now login.',
       oldInput: {},
     });
   } catch (error) {
-    return res.status(error.statusCode || 500).render('auth/forgot-password', {
+    return res.status(error.statusCode || 500).render('forgot-password', {
       title: 'Forgot Password',
       error: error.message || 'Unable to change password.',
       success: null,
@@ -75,7 +75,7 @@ async function postRegister(req, res) {
       return res.status(400).json({ success: false, message: 'Please fill in all required fields.' });
     }
 
-    return res.status(400).render('auth/register', {
+    return res.status(400).render('register', {
       title: 'Register',
       error: 'Please fill in all required fields.',
       oldInput: req.body,
@@ -87,7 +87,7 @@ async function postRegister(req, res) {
       return res.status(400).json({ success: false, message: 'Passwords do not match.' });
     }
 
-    return res.status(400).render('auth/register', {
+    return res.status(400).render('register', {
       title: 'Register',
       error: 'Passwords do not match.',
       oldInput: req.body,
@@ -105,7 +105,7 @@ async function postRegister(req, res) {
         });
       }
 
-      return res.status(409).render('auth/register', {
+      return res.status(409).render('register', {
         title: 'Register',
         error: 'An account with this email already exists.',
         oldInput: req.body,
@@ -150,7 +150,7 @@ async function postRegister(req, res) {
       return res.status(500).json({ success: false, message: 'Registration failed. Please try again.' });
     }
 
-    return res.status(500).render('auth/register', {
+    return res.status(500).render('register', {
       title: 'Register',
       error: 'Registration failed. Please try again.',
       oldInput: req.body,
@@ -166,7 +166,7 @@ async function postLogin(req, res) {
       return res.status(400).json({ success: false, message: 'Please enter your email and password.' });
     }
 
-    return res.status(400).render('auth/login', {
+    return res.status(400).render('login', {
       title: 'Login',
       error: 'Please enter your email and password.',
       oldInput: req.body,
@@ -181,7 +181,7 @@ async function postLogin(req, res) {
         return res.status(401).json({ success: false, message: 'Invalid email or password.' });
       }
 
-      return res.status(401).render('auth/login', {
+      return res.status(401).render('login', {
         title: 'Login',
         error: 'Invalid email or password.',
         oldInput: req.body,
@@ -193,7 +193,7 @@ async function postLogin(req, res) {
         return res.status(403).json({ success: false, message: 'This account is inactive.' });
       }
 
-      return res.status(403).render('auth/login', {
+      return res.status(403).render('login', {
         title: 'Login',
         error: 'This account is inactive.',
         oldInput: req.body,
@@ -218,7 +218,7 @@ async function postLogin(req, res) {
         return res.status(401).json({ success: false, message: 'Invalid email or password.' });
       }
 
-      return res.status(401).render('auth/login', {
+      return res.status(401).render('login', {
         title: 'Login',
         error: 'Invalid email or password.',
         oldInput: req.body,
@@ -251,7 +251,7 @@ async function postLogin(req, res) {
       return res.status(500).json({ success: false, message: 'Login failed. Please try again.' });
     }
 
-    return res.status(500).render('auth/login', {
+    return res.status(500).render('login', {
       title: 'Login',
       error: 'Login failed. Please try again.',
       oldInput: req.body,
