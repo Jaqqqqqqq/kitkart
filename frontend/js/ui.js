@@ -6,13 +6,6 @@
       t = document.createElement('div');
       t.id = 'globalToast';
       t.className = 'msg-toast';
-      t.style.position = 'fixed';
-      t.style.right = '16px';
-      t.style.bottom = '16px';
-      t.style.padding = '10px 14px';
-      t.style.borderRadius = '6px';
-      t.style.boxShadow = '0 6px 18px rgba(15,23,42,0.12)';
-      t.style.zIndex = 9999;
       t.style.display = 'none';
       document.body.appendChild(t);
     }
