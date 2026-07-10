@@ -10,6 +10,11 @@ router.use(requireRole('admin', 'Only administrators can access this page.'));
 
 router.get('/dashboard', dashboardController.dashboard);
 router.get('/charts', dashboardController.charts);
+router.get('/api/orders', adminController.getOrdersApi);
+router.get('/api/orders/:id', adminController.getOrderApi);
+router.get('/api/reviews', adminController.getReviewsApi);
+router.get('/api/products/:id', adminController.getProductApi);
+router.get('/api/categories/:id', adminController.getCategoryApi);
 router.get('/orders', adminController.orders);
 router.get('/orders/:id', adminController.orderDetails);
 router.get('/reviews', adminController.reviews);

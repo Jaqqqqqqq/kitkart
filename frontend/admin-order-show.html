@@ -3,160 +3,73 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %></title>
+  <title>Order Details</title>
   <link rel="stylesheet" href="/css/catalog.css">
-  <style>
-    .status-message {
-      display: none;
-      margin-bottom: 15px;
-      padding: 12px;
-      border-radius: 6px;
-      background: #d1fae5;
-      color: #065f46;
-      border: 1px solid #10b981;
-      font-weight: 600;
-    }
-  </style>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
 <body>
-
-<main class="page">
-  <header class="catalog-header">
-    <div>
-      <a href="/admin/orders" class="back-link">← Back to all orders</a>
-      <h1>Order #<%= order.id %></h1>
-      <p>
-        <%= order.first_name %>
-        <%= order.last_name %>
-        -
-        <%= order.email %>
-      </p>
-    </div>
-  </header>
-
-  <section class="cart-panel">
-    <div id="statusMessage" class="status-message"></div>
-
-    <p>
-      Payment:
-      <strong><%= order.payment_method %></strong>
-    </p>
-
-    <div class="cart-table-wrap">
-      <table class="cart-table">
-        <thead>
-          <tr>
-            <th>Product</th>
-            <th>Price</th>
-            <th>Quantity</th>
-            <th>Subtotal</th>
-            <th>Status</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <% order.items.forEach((item)=>{ 
-               const canCancel = item.status === 'Pending';
-          %>
+  <main class="dashboard-panel">
+    <p><a href="/admin/orders">Back to orders</a></p>
+    <h1 id="orderTitle">Order Details</h1>
+    <div id="orderMeta"></div>
+    <table class="data-table" id="orderItemsTable">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Price</th>
+          <th>Qty</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <p><strong>Total:</strong> <span id="orderTotal"></span></p>
+  </main>
+  <script>
+    $(function () {
+      const orderId = window.location.pathname.split('/').filter(Boolean).pop();
+      $.getJSON('/admin/api/orders/' + orderId, function (response) {
+        const order = response.result;
+        $('#orderTitle').text('Order #' + order.id);
+        $('#orderMeta').html(order.first_name + ' ' + order.last_name + '<br>' + order.email + '<br>' + order.payment_method);
+        $('#orderTotal').text('PHP ' + Number(order.total).toFixed(2));
+        const html = (order.items || []).map((item) => {
+          const cancelDisabled = item.status !== 'Pending' ? 'disabled' : '';
+          return `
             <tr>
-              <td><%= item.product_name %></td>
-              <td>PHP <%= item.price.toFixed(2) %></td>
-              <td><%= item.quantity %></td>
-              <td>PHP <%= item.subtotal.toFixed(2) %></td>
+              <td>${item.product_name}</td>
+              <td>PHP ${Number(item.price).toFixed(2)}</td>
+              <td>${item.quantity}</td>
               <td>
-                <select
-                  class="itemStatus"
-                  data-id="<%= item.id %>"
-                  >
-                  <% ['Pending', 'Shipped', 'Delivered', 'Cancelled'].forEach((status)=>{ %>
-                    <% const isDisabled = status === 'Cancelled' && !canCancel; %>
-                    <option
-                      value="<%= status %>"
-                      <%= item.status===status?"selected":"" %>
-                      <%= isDisabled ? 'disabled' : '' %>>
-                      <%= status %>
-                    </option>
-                  <% }) %>
+                <select class="status-select" data-id="${item.id}">
+                  ${['Pending','Shipped','Delivered','Cancelled'].map((status) => `<option value="${status}" ${item.status === status ? 'selected' : ''} ${(status === 'Cancelled' && item.status !== 'Pending') ? 'disabled' : ''}>${status}</option>`).join('')}
                 </select>
               </td>
-              <td>
-                <button
-                  class="saveStatus"
-                  data-id="<%= item.id %>"
-                  >
-                  Save
-                </button>
-                <% if (!canCancel) { %>
-                  <div style="margin-top: 6px; font-size: 0.85rem; color: #6b7280;">
-                    Cancellation is only allowed while pending.
-                  </div>
-                <% } %>
-              </td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
+              <td><button class="update-status-btn" data-id="${item.id}" ${cancelDisabled}>Update</button></td>
+            </tr>`;
+        }).join('');
+        $('#orderItemsTable tbody').html(html || '<tr><td colspan="5">No items.</td></tr>');
+      });
 
-    <div class="cart-summary">
-      <p></p>
-      <p>
-        Total:
-        PHP
-        <strong><%= order.total.toFixed(2) %></strong>
-      </p>
-    </div>
-  </section>
-</main>
-
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script>
-$(document).on("click",".saveStatus",function(){
-    const itemId=$(this).data("id");
-    const status=$(this).closest("tr").find(".itemStatus").val();
-
-    $.ajax({
-        url:"/admin/orders/items/"+itemId+"/status",
-        type:"PUT",
-        contentType:"application/json",
-        data: JSON.stringify({ status }),
-        success:function(response){
-            $("#statusMessage")
-                .css({
-                    background:"#d1fae5",
-                    color:"#065f46",
-                    border:"1px solid #10b981"
-                })
-                .text("✓ " + (response.message || "Status updated successfully"))
-                .fadeIn();
-
-            setTimeout(function(){
-                $("#statusMessage").fadeOut();
-            },2500);
-        },
-        error:function(xhr){
-            let errorMessage = "Unable to update order status.";
-
-            if (xhr.responseJSON?.message) {
-                errorMessage = xhr.responseJSON.message;
-            } else if (xhr.status === 401) {
-                errorMessage = "Authentication required. Please login.";
-            } else if (xhr.status === 403) {
-                errorMessage = "You do not have permission to update orders.";
-            }
-
-            $("#statusMessage")
-                .css({
-                    background:"#fee2e2",
-                    color:"#991b1b",
-                    border:"1px solid #dc2626"
-                })
-                .text("✗ " + errorMessage)
-                .fadeIn();
-        }
+      $(document).on('click', '.update-status-btn', function () {
+        const itemId = $(this).data('id');
+        const status = $('.status-select[data-id="' + itemId + '"]').val();
+        $.ajax({
+          method: 'PUT',
+          url: '/admin/orders/items/' + itemId + '/status',
+          contentType: 'application/json',
+          data: JSON.stringify({ status }),
+          success: function () {
+            alert('Updated.');
+            location.reload();
+          },
+          error: function (xhr) {
+            alert(xhr.responseJSON?.message || 'Update failed.');
+          }
+        });
+      });
     });
-});
-</script>
-
+  </script>
 </body>
 </html>

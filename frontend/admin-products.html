@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %></title>
+  <title>Products</title>
   <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.min.css">
   <link rel="stylesheet" href="/css/catalog.css">
 </head>
@@ -20,59 +20,55 @@
     </header>
 
     <section class="cart-panel">
-      <% if (products.length === 0) { %>
-        <p class="empty-message is-visible">No products found.</p>
-      <% } else { %>
-        <div class="cart-table-wrap">
-          <table id="productsTable" class="cart-table display">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Category</th>
-                <th>Price</th>
-                <th>Stock</th>
-                <th>Image</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% products.forEach((product) => { %>
-                <tr id="product-row-<%= product.id %>">
-                  <td><%= product.product_name %></td>
-                  <td><%= product.category_name %></td>
-                  <td>PHP <%= product.price.toFixed(2) %></td>
-                  <td><%= product.stock_quantity %></td>
-                  <td>
-                    <% if (product.image) { %>
-                      <img
-                        class="table-image"
-                        src="<%= product.image.startsWith('/') || product.image.startsWith('http') ? product.image : '/images/' + product.image %>"
-                        alt="<%= product.product_name %>">
-                    <% } else { %>
-                      -
-                    <% } %>
-                  </td>
-                  <td>
-                    <a href="/admin/products/<%= product.id %>/edit" class="action-link">Edit</a>
-                    <form
-                      action="/admin/products/<%= product.id %>/delete"
-                      method="POST"
-                      class="inline-form js-api-delete"
-                      data-api-url="/api/v1/products/<%= product.id %>"
-                      data-row="#product-row-<%= product.id %>">
-                      <button type="submit" class="remove-button">Delete</button>
-                    </form>
-                  </td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
-        </div>
-      <% } %>
+      <div class="cart-table-wrap">
+        <table id="productsTable" class="cart-table display">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Stock</th>
+              <th>Image</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="productsBody"></tbody>
+        </table>
+      </div>
     </section>
   </main>
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
   <script src="/js/admin-crud.js"></script>
+  <script>
+    $(function () {
+      $.get('/api/v1/products', function (response) {
+        const products = response.rows || [];
+        const $body = $('#productsBody');
+        $body.empty();
+
+        products.forEach(function (product) {
+          const imageUrl = product.image ? (product.image.startsWith('/') || product.image.startsWith('http') ? product.image : '/images/' + product.image) : '';
+          $body.append(`
+            <tr id="product-row-${product.id}">
+              <td>${product.product_name}</td>
+              <td>${product.category_name || '-'}</td>
+              <td>PHP ${Number(product.price).toFixed(2)}</td>
+              <td>${product.stock_quantity}</td>
+              <td>${imageUrl ? `<img class="table-image" src="${imageUrl}" alt="${product.product_name}">` : '-'}</td>
+              <td>
+                <a href="/admin/products/${product.id}/edit" class="action-link">Edit</a>
+                <form action="/admin/products/${product.id}/delete" method="POST" class="inline-form js-api-delete" data-api-url="/api/v1/products/${product.id}" data-row="#product-row-${product.id}">
+                  <button type="submit" class="remove-button">Delete</button>
+                </form>
+              </td>
+            </tr>
+          `);
+        });
+
+        $('#productsTable').DataTable({ pageLength: 10, lengthChange: false, order: [[0, 'asc']] });
+      });
+    });
+  </script>
 </body>
 </html>

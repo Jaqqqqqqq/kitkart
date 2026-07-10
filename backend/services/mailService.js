@@ -34,13 +34,15 @@ function createTransporter() {
   });
 }
 
-function buildTransactionUpdateEmail({ order, status }) {
-  const safeOrderId = escapeHtml(order.id);
+function buildTransactionUpdateEmail({ orderId, customerName, item, status, paymentMethod }) {
+  const safeOrderId = escapeHtml(orderId);
   const safeStatus = escapeHtml(status);
-  const customerName = escapeHtml(`${order.first_name || ''} ${order.last_name || ''}`.trim());
-  const paymentMethod = escapeHtml(order.payment_method || 'Not specified');
-  const total = escapeHtml(formatCurrency(order.total));
-  const itemCount = Array.isArray(order.items) ? order.items.length : 0;
+  const safeCustomerName = escapeHtml(customerName || 'there');
+  const safePaymentMethod = escapeHtml(paymentMethod || 'Not specified');
+  const safeItemName = escapeHtml(item?.product_name || 'Item');
+  const safeQuantity = escapeHtml(item?.quantity || 0);
+  const safePrice = escapeHtml(formatCurrency(item?.price));
+  const safeSubtotal = escapeHtml(formatCurrency(item?.subtotal));
   const normalizedStatus = String(status).toLowerCase();
   const statusColor = normalizedStatus === 'cancelled' ? '#dc2626' : '#0f766e';
   const statusBg = normalizedStatus === 'cancelled' ? '#fee2e2' : '#ecfdf5';
@@ -60,7 +62,7 @@ function buildTransactionUpdateEmail({ order, status }) {
               </tr>
               <tr>
                 <td style="padding:30px 32px 26px;">
-                  <p style="margin:0 0 18px;font-size:16px;line-height:1.6;">Hello ${customerName || 'there'},</p>
+                  <p style="margin:0 0 18px;font-size:16px;line-height:1.6;">Hello ${safeCustomerName},</p>
                   <p style="margin:0 0 22px;font-size:14px;line-height:1.7;color:#475569;">Your KitKart order has been updated. We attached the refreshed PDF receipt so you can keep a clean copy for your records.</p>
 
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;border-spacing:0;background:#f8fafc;border:1px solid #d9e4ef;border-radius:14px;overflow:hidden;margin:0 0 22px;">
@@ -74,16 +76,34 @@ function buildTransactionUpdateEmail({ order, status }) {
                     </tr>
                     <tr>
                       <td style="padding:16px 18px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Payment</td>
-                      <td align="right" style="padding:16px 18px;border-bottom:1px solid #e2e8f0;color:#102033;font-size:14px;font-weight:700;">${paymentMethod}</td>
+                      <td align="right" style="padding:16px 18px;border-bottom:1px solid #e2e8f0;color:#102033;font-size:14px;font-weight:700;">${safePaymentMethod}</td>
+                    </tr>
+                  </table>
+
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;border-spacing:0;background:#fff;border:1px solid #d9e4ef;border-radius:14px;overflow:hidden;margin:0 0 22px;">
+                    <tr>
+                      <td colspan="2" style="padding:14px 18px;background:#f8fafc;color:#334155;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;">Updated Item</td>
                     </tr>
                     <tr>
-                      <td style="padding:16px 18px;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Total</td>
-                      <td align="right" style="padding:16px 18px;color:#102033;font-size:18px;font-weight:900;">${total}</td>
+                      <td style="padding:14px 18px;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px;">Product</td>
+                      <td align="right" style="padding:14px 18px;border-top:1px solid #e2e8f0;color:#102033;font-size:14px;font-weight:800;">${safeItemName}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:14px 18px;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px;">Quantity</td>
+                      <td align="right" style="padding:14px 18px;border-top:1px solid #e2e8f0;color:#102033;font-size:14px;font-weight:700;">${safeQuantity}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:14px 18px;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px;">Price</td>
+                      <td align="right" style="padding:14px 18px;border-top:1px solid #e2e8f0;color:#102033;font-size:14px;font-weight:700;">${safePrice}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:14px 18px;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px;">Subtotal</td>
+                      <td align="right" style="padding:14px 18px;border-top:1px solid #e2e8f0;color:#102033;font-size:15px;font-weight:900;">${safeSubtotal}</td>
                     </tr>
                   </table>
 
                   <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:15px 18px;color:#9a3412;font-size:13px;line-height:1.6;">
-                    The attached PDF includes ${itemCount} item${itemCount === 1 ? '' : 's'}, quantities, item statuses, and the order total.
+                    The attached PDF includes only the updated item, its quantity, price, subtotal, and the new status.
                   </div>
                 </td>
               </tr>

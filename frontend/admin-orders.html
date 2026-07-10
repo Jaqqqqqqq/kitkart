@@ -3,56 +3,45 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %></title>
-  <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.min.css">
+  <title>Orders</title>
   <link rel="stylesheet" href="/css/catalog.css">
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
 <body>
-  <main class="page">
-    <header class="catalog-header">
-      <div>
-        <a href="/admin/dashboard" class="back-link">Dashboard</a>
-        <p class="eyebrow">Fulfillment</p>
-        <h1>All Orders</h1>
-        <p class="meta-copy">Review purchases and update order progress from one place.</p>
-      </div>
-    </header>
-
-    <section class="cart-panel">
-      <% if (orders.length === 0) { %>
-        <p class="empty-message is-visible">No orders found.</p>
-      <% } else { %>
-        <div class="cart-table-wrap">
-          <table id="ordersTable" class="cart-table display">
-            <thead>
-              <tr>
-                <th>Order</th>
-                <th>Customer</th>
-                <th>Payment</th>
-                <th>Items</th>
-                <th>Total</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% orders.forEach((order) => { %>
-                <tr>
-                  <td data-order="<%= new Date(order.created_at).toISOString() %>-<%= String(order.id).padStart(10, '0') %>">#<%= order.id %></td>
-                  <td><%= order.first_name %> <%= order.last_name %><br><%= order.email %></td>
-                  <td><%= order.payment_method %></td>
-                  <td><%= order.item_count %></td>
-                  <td>PHP <%= order.total.toFixed(2) %></td>
-                  <td><a href="/admin/orders/<%= order.id %>">View</a></td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
-        </div>
-      <% } %>
-    </section>
+  <main class="dashboard-panel">
+    <h1>Orders</h1>
+    <p><a href="/admin/dashboard">Back to dashboard</a></p>
+    <table class="data-table" id="ordersTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Customer</th>
+          <th>Payment</th>
+          <th>Items</th>
+          <th>Total</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </main>
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
-  <script src="/js/admin-crud.js"></script>
+  <script>
+    $(function () {
+      $.getJSON('/admin/api/orders', function (response) {
+        const rows = response.rows || [];
+        const html = rows.map((order) => `
+          <tr>
+            <td>#${order.id}</td>
+            <td>${order.first_name} ${order.last_name}<br>${order.email}</td>
+            <td>${order.payment_method}</td>
+            <td>${order.item_count}</td>
+            <td>PHP ${Number(order.total).toFixed(2)}</td>
+            <td><a href="/admin/orders/${order.id}">View</a></td>
+          </tr>
+        `).join('');
+        $('#ordersTable tbody').html(html || '<tr><td colspan="6">No orders found.</td></tr>');
+      });
+    });
+  </script>
 </body>
 </html>

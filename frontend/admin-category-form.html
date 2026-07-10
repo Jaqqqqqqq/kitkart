@@ -3,49 +3,49 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %></title>
+  <title>Category Form</title>
   <link rel="stylesheet" href="/css/catalog.css">
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
 <body>
-  <main class="page">
-    <header class="catalog-header">
-      <div>
-        <a href="/admin/categories" class="back-link">Back to categories</a>
-        <h1><%= title %></h1>
-      </div>
-    </header>
-
-    <section class="cart-panel">
-      <% if (error) { %>
-        <p class="form-error"><%= error %></p>
-      <% } %>
-
-      <form
-        action="<%= action %>"
-        method="POST"
-        class="admin-form js-admin-form js-api-form"
-        id="categoryForm"
-        data-api-url="<%= category.id ? '/api/v1/categories/' + category.id : '/api/v1/categories' %>"
-        data-api-method="<%= category.id ? 'PUT' : 'POST' %>"
-        data-redirect="/admin/categories"
-        novalidate>
-        <div class="form-field">
-          <label for="category_name">Category name</label>
-          <input id="category_name" name="category_name" value="<%= category.category_name %>" required>
-          <p class="field-help"></p>
-        </div>
-
-        <div class="form-field">
-          <label for="description">Description</label>
-          <textarea id="description" name="description" rows="4"><%= category.description %></textarea>
-          <p class="field-help"></p>
-        </div>
-
-        <button type="submit">Save category</button>
-      </form>
-    </section>
+  <main class="dashboard-panel">
+    <p><a href="/admin/categories">Back</a></p>
+    <h1 id="pageTitle">Category Form</h1>
+    <form id="categoryForm">
+      <div class="form-field"><label>Category Name</label><input id="category_name" required></div>
+      <div class="form-field"><label>Description</label><textarea id="description" rows="4"></textarea></div>
+      <button type="submit">Save</button>
+    </form>
   </main>
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script src="/js/admin-crud.js"></script>
+  <script>
+    $(function () {
+      const match = window.location.pathname.match(/\/admin\/categories\/(\d+)\/edit/);
+      const id = match ? match[1] : null;
+      const apiUrl = id ? '/api/v1/categories/' + id : '/api/v1/categories';
+      if (id) {
+        $('#pageTitle').text('Edit Category');
+        $.getJSON('/admin/api/categories/' + id, function (response) {
+          $('#category_name').val(response.result.category_name || '');
+          $('#description').val(response.result.description || '');
+        });
+      } else {
+        $('#pageTitle').text('Add Category');
+      }
+      $('#categoryForm').on('submit', function (e) {
+        e.preventDefault();
+        $.ajax({
+          method: id ? 'PUT' : 'POST',
+          url: apiUrl,
+          contentType: 'application/json',
+          data: JSON.stringify({
+            category_name: $('#category_name').val(),
+            description: $('#description').val()
+          }),
+          success: function () { window.location.href = '/admin/categories'; },
+          error: function (xhr) { alert(xhr.responseJSON?.message || 'Save failed.'); }
+        });
+      });
+    });
+  </script>
 </body>
 </html>

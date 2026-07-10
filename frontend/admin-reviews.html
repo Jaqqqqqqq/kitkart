@@ -3,63 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %></title>
-  <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.min.css">
+  <title>Reviews</title>
   <link rel="stylesheet" href="/css/catalog.css">
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
 <body>
-  <main class="page">
-    <header class="catalog-header">
-      <div>
-        <a href="/admin/dashboard" class="back-link">Dashboard</a>
-        <h1>Customer Reviews</h1>
-        <p>Reviews are listed per product.</p>
-      </div>
-    </header>
-
-    <section class="cart-panel">
-      <% if (reviews.length === 0) { %>
-        <p class="empty-message is-visible">No reviews found.</p>
-      <% } else { %>
-        <div class="cart-table-wrap">
-          <table id="reviewsTable" class="cart-table display">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Customer</th>
-                <th>Order</th>
-                <th>Rating</th>
-                <th>Review</th>
-                <th>Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% reviews.forEach((review) => { %>
-                <tr>
-                  <td><a href="/admin/products/<%= review.product_id %>/edit"><%= review.product_name %></a></td>
-                  <td>
-                    <%= review.customer_name %><br>
-                    <span class="muted"><%= review.customer_email %></span>
-                  </td>
-                  <td><a href="/admin/orders/<%= review.order_id %>">#<%= review.order_id %></a></td>
-                  <td><strong><%= review.rating %>/5</strong></td>
-                  <td><%= review.review_text %></td>
-                  <td><%= new Date(review.created_at).toLocaleDateString() %></td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
-        </div>
-      <% } %>
-    </section>
+  <main class="dashboard-panel">
+    <h1>Reviews</h1>
+    <p><a href="/admin/dashboard">Back to dashboard</a></p>
+    <table class="data-table" id="reviewsTable"><thead><tr><th>Product</th><th>Customer</th><th>Order</th><th>Rating</th><th>Review</th></tr></thead><tbody></tbody></table>
   </main>
-
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
   <script>
-    if (window.DataTable && document.querySelector('#reviewsTable')) {
-      new DataTable('#reviewsTable');
-    }
+    $(function () {
+      $.getJSON('/admin/api/reviews', function (response) {
+        const rows = response.rows || [];
+        $('#reviewsTable tbody').html(rows.map((review) => `
+          <tr>
+            <td>${review.product_name}</td>
+            <td>${review.customer_name}<br>${review.customer_email}</td>
+            <td>#${review.order_id}</td>
+            <td>${review.rating}/5</td>
+            <td>${review.review_text}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="5">No reviews found.</td></tr>');
+      });
+    });
   </script>
 </body>
 </html>

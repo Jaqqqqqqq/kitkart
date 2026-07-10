@@ -1,12 +1,17 @@
 const path = require('path');
 const customerModel = require('../models/userModel');
+const { User } = require('../config/sequelize');
 
 function home(req, res) {
   res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'home.html'));
 }
 
 async function getCurrentUser(req) {
-    return customerModel.getUserById(req.session.user.id);
+    const user = await User.findByPk(req.session.user.id, {
+      attributes: ['id', 'first_name', 'last_name', 'email', 'phone', 'address', 'role', 'status'],
+    });
+
+    return user ? user.get({ plain: true }) : null;
 }
 
 async function profile(req, res) {
@@ -69,6 +74,7 @@ async function updatePassword(req, res) {
 module.exports = {
   changePasswordPage,
   editProfile,
+  getCurrentUser,
   home,
   profile,
   updatePassword,

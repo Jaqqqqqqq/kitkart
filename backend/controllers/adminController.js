@@ -38,12 +38,6 @@ async function orders(req, res) {
 
 async function orderDetails(req, res) {
   try {
-    const order = await adminModel.getOrderById(req.params.id);
-
-    if (!order) {
-      return res.status(404).send('Order not found.');
-    }
-
     return res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'admin-order-show.html'));
   } catch (error) {
     console.error(error);
@@ -71,15 +65,6 @@ async function newProduct(req, res) {
 
 async function editProduct(req, res) {
   try {
-    const [product, categories] = await Promise.all([
-      adminModel.getProductById(req.params.id),
-      adminModel.getCategories(),
-    ]);
-
-    if (!product) {
-      return res.status(404).send('Product not found.');
-    }
-
     return res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'admin-product-form.html'));
   } catch (error) {
     console.error(error);
@@ -106,13 +91,7 @@ function newCategory(req, res) {
 
 async function editCategory(req, res) {
   try {
-    const category = await adminModel.getCategoryById(req.params.id);
-
-    if (!category) {
-      return res.status(404).send('Category not found.');
-    }
-
-    return renderCategoryForm(res, 'Edit Category', `/admin/categories/${category.id}`, category);
+    return res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'admin-category-form.html'));
   } catch (error) {
     console.error(error);
     return res.status(500).send('Unable to load category form.');
@@ -297,18 +276,32 @@ async function updateOrderItemStatus(req, res) {
       user: req.session?.user?.email || 'No session',
     });
 
-    await adminModel.updateOrderItemStatus(req.params.itemId, req.body.status);
-
     const order = await adminModel.getOrderByItemId(req.params.itemId);
+    const currentItem = order?.items?.find((item) => String(item.id) === String(req.params.itemId));
     let emailStatus = 'sent';
 
-    if (order) {
+    if (order && currentItem) {
       try {
-        const receiptPdf = await generateReceiptPdf(order);
+        await adminModel.updateOrderItemStatus(req.params.itemId, req.body.status);
+        const receiptPdf = await generateReceiptPdf({
+          orderId: order.id,
+          createdAt: order.created_at,
+          customerName: `${order.first_name || ''} ${order.last_name || ''}`.trim(),
+          email: order.email,
+          paymentMethod: order.payment_method,
+          item: currentItem,
+          status: req.body.status,
+        });
         const mailResult = await sendTransactionUpdateEmail({
           to: order.email,
           subject: `KitKart Order #${order.id} Status Updated`,
-          html: buildTransactionUpdateEmail({ order, status: req.body.status }),
+          html: buildTransactionUpdateEmail({
+            orderId: order.id,
+            customerName: `${order.first_name || ''} ${order.last_name || ''}`.trim(),
+            item: currentItem,
+            status: req.body.status,
+            paymentMethod: order.payment_method,
+          }),
           attachments: [
             {
               filename: `kitkart-order-${order.id}-receipt.pdf`,
@@ -323,6 +316,8 @@ async function updateOrderItemStatus(req, res) {
         emailStatus = 'failed';
         console.error('Unable to send transaction update email:', mailError);
       }
+    } else {
+      await adminModel.updateOrderItemStatus(req.params.itemId, req.body.status);
     }
 
     return res.json({
@@ -347,6 +342,63 @@ async function updateOrderItemStatus(req, res) {
     });
   }
 }
+
+async function getOrdersApi(req, res) {
+  try {
+    const rows = await adminModel.getAllOrders();
+    return res.json({ success: true, rows });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Unable to fetch orders.' });
+  }
+}
+
+async function getOrderApi(req, res) {
+  try {
+    const result = await adminModel.getOrderById(req.params.id);
+
+    if (!result) {
+      return res.status(404).json({ success: false, message: 'Order not found.' });
+    }
+
+    return res.json({ success: true, result });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Unable to fetch order.' });
+  }
+}
+
+async function getReviewsApi(req, res) {
+  try {
+    const rows = await reviewModel.getReviewsForAdmin();
+    return res.json({ success: true, rows });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Unable to fetch reviews.' });
+  }
+}
+
+async function getProductApi(req, res) {
+  try {
+    const result = await adminModel.getProductById(req.params.id);
+    if (!result) {
+      return res.status(404).json({ success: false, message: 'Product not found.' });
+    }
+    return res.json({ success: true, result });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Unable to fetch product.' });
+  }
+}
+
+async function getCategoryApi(req, res) {
+  try {
+    const result = await adminModel.getCategoryById(req.params.id);
+    if (!result) {
+      return res.status(404).json({ success: false, message: 'Category not found.' });
+    }
+    return res.json({ success: true, result });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Unable to fetch category.' });
+  }
+}
+
 module.exports = {
   categories,
   createCategoryApi,
@@ -362,6 +414,11 @@ module.exports = {
   orders,
   products,
   reviews,
+  getOrdersApi,
+  getOrderApi,
+  getReviewsApi,
+  getProductApi,
+  getCategoryApi,
   updateCategoryApi,
   updateUserRole,
   updateUserStatus,

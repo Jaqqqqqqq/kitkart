@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %></title>
+  <title>Categories</title>
   <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.min.css">
   <link rel="stylesheet" href="/css/catalog.css">
 </head>
@@ -20,44 +20,46 @@
     </header>
 
     <section class="cart-panel">
-      <% if (categories.length === 0) { %>
-        <p class="empty-message is-visible">No categories found.</p>
-      <% } else { %>
-        <div class="cart-table-wrap">
-          <table id="categoriesTable" class="cart-table display">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Description</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% categories.forEach((category) => { %>
-                <tr id="category-row-<%= category.id %>">
-                  <td><%= category.category_name %></td>
-                  <td><%= category.description || '-' %></td>
-                  <td>
-                    <a href="/admin/categories/<%= category.id %>/edit" class="action-link">Edit</a>
-                    <form
-                      action="/admin/categories/<%= category.id %>/delete"
-                      method="POST"
-                      class="inline-form js-api-delete"
-                      data-api-url="/api/v1/categories/<%= category.id %>"
-                      data-row="#category-row-<%= category.id %>">
-                      <button type="submit" class="remove-button">Delete</button>
-                    </form>
-                  </td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
-        </div>
-      <% } %>
+      <div class="cart-table-wrap">
+        <table id="categoriesTable" class="cart-table display">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Description</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="categoriesBody"></tbody>
+        </table>
+      </div>
     </section>
   </main>
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
   <script src="/js/admin-crud.js"></script>
+  <script>
+    $(function () {
+      $.get('/api/v1/categories', function (response) {
+        const categories = response.rows || [];
+        const $body = $('#categoriesBody');
+        $body.empty();
+        categories.forEach(function (category) {
+          $body.append(`
+            <tr id="category-row-${category.id}">
+              <td>${category.category_name}</td>
+              <td>${category.description || '-'}</td>
+              <td>
+                <a href="/admin/categories/${category.id}/edit" class="action-link">Edit</a>
+                <form action="/admin/categories/${category.id}/delete" method="POST" class="inline-form js-api-delete" data-api-url="/api/v1/categories/${category.id}" data-row="#category-row-${category.id}">
+                  <button type="submit" class="remove-button">Delete</button>
+                </form>
+              </td>
+            </tr>
+          `);
+        });
+        $('#categoriesTable').DataTable({ pageLength: 10, lengthChange: false, order: [[0, 'asc']] });
+      });
+    });
+  </script>
 </body>
 </html>

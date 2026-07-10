@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %></title>
+  <title>School Supplies Catalog</title>
   <link rel="stylesheet" href="/css/catalog.css">
 </head>
 <body>
@@ -37,45 +37,11 @@
         <label for="categoryFilter">Category</label>
         <select id="categoryFilter">
           <option value="">All categories</option>
-          <% categories.forEach((category) => { %>
-            <option value="<%= category.id %>"><%= category.category_name %></option>
-          <% }) %>
         </select>
       </div>
     </section>
 
-    <section class="product-grid" id="productGrid">
-      <% products.forEach((product) => { %>
-        <article
-          class="product-card"
-          data-name="<%= product.product_name.toLowerCase() %>"
-          data-category-id="<%= product.category_id %>"
-        >
-          <a href="/products/<%= product.id %>" class="product-image">
-            <% if (product.image_url) { %>
-              <img src="<%= product.image_url %>" alt="<%= product.product_name %>" loading="lazy">
-            <% } %>
-            <span class="image-placeholder <%= product.image_url ? 'is-hidden' : '' %>">No image</span>
-          </a>
-
-          <div class="product-body">
-            <p class="category"><%= product.category_name %></p>
-            <h2><a href="/products/<%= product.id %>"><%= product.product_name %></a></h2>
-            <p class="price">PHP <%= Number(product.price).toFixed(2) %></p>
-            <p class="stock">Stock: <%= product.stock_quantity || 0 %></p>
-
-            <form class="add-to-cart-form" action="/cart/items" method="POST">
-              <input type="hidden" name="product_id" value="<%= product.id %>">
-              <input type="hidden" name="quantity" value="1">
-              <button type="submit" <%= Number(product.stock_quantity) < 1 ? 'disabled' : '' %>>
-                Add to Cart
-              </button>
-              <span class="cart-message" aria-live="polite"></span>
-            </form>
-          </div>
-        </article>
-      <% }) %>
-    </section>
+    <section class="product-grid" id="productGrid"></section>
 
     <p id="infiniteScrollStatus" class="table-note" aria-live="polite"></p>
     <div id="infiniteScrollSentinel" class="infinite-sentinel" aria-hidden="true"></div>
@@ -85,5 +51,45 @@
 
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="/js/catalog.js"></script>
+  <script>
+    $(function () {
+      $.get('/api/v1/categories', function (categoryResponse) {
+        const categories = categoryResponse.rows || [];
+        categories.forEach(function (category) {
+          $('#categoryFilter').append(`<option value="${category.id}">${category.category_name}</option>`);
+        });
+      });
+
+      $.get('/api/v1/products', function (productResponse) {
+        const products = productResponse.rows || [];
+        const grid = $('#productGrid');
+        grid.empty();
+
+        products.forEach(function (product) {
+          const imageUrl = product.image ? (product.image.startsWith('/') || product.image.startsWith('http') ? product.image : '/images/' + product.image) : '';
+          grid.append(`
+            <article class="product-card" data-name="${String(product.product_name || '').toLowerCase()}" data-category-id="${product.category_id}">
+              <a href="/products/${product.id}" class="product-image">
+                ${imageUrl ? `<img src="${imageUrl}" alt="${product.product_name}" loading="lazy">` : ''}
+                <span class="image-placeholder ${imageUrl ? 'is-hidden' : ''}">No image</span>
+              </a>
+              <div class="product-body">
+                <p class="category">${product.category_name || '-'}</p>
+                <h2><a href="/products/${product.id}">${product.product_name}</a></h2>
+                <p class="price">PHP ${Number(product.price).toFixed(2)}</p>
+                <p class="stock">Stock: ${product.stock_quantity || 0}</p>
+                <form class="add-to-cart-form" action="/cart/items" method="POST">
+                  <input type="hidden" name="product_id" value="${product.id}">
+                  <input type="hidden" name="quantity" value="1">
+                  <button type="submit" ${Number(product.stock_quantity) < 1 ? 'disabled' : ''}>Add to Cart</button>
+                  <span class="cart-message" aria-live="polite"></span>
+                </form>
+              </div>
+            </article>
+          `);
+        });
+      });
+    });
+  </script>
 </body>
 </html>

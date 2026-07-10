@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %></title>
+  <title>Home</title>
   <link rel="stylesheet" href="/css/catalog.css">
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
 <body class="dashboard-page">
   <main class="dashboard-panel">
@@ -12,20 +13,17 @@
       <div>
         <p class="eyebrow">Customer</p>
         <h1>School supplies home</h1>
-        <p class="meta-copy">Welcome, <%= currentUser.first_name %>. Shop supplies, track orders, and keep your profile updated.</p>
+        <p class="meta-copy" id="welcomeText">Welcome. Shop supplies, track orders, and keep your profile updated.</p>
       </div>
-
       <form action="/auth/logout" method="POST">
         <button type="submit" class="danger-button">Logout</button>
       </form>
     </div>
-
     <div class="hero-pills" style="margin-bottom: 14px;">
       <span class="pill brand">Quick shop</span>
       <span class="pill blue">Order tracking</span>
       <span class="pill sun">Profile and history</span>
     </div>
-
     <div class="dashboard-links">
       <a href="/shop">Shop</a>
       <a href="/cart">Cart</a>
@@ -33,5 +31,14 @@
       <a href="/profile">Profile</a>
     </div>
   </main>
+  <script>
+    $(function () {
+      $.getJSON('/api/v1/me', function (response) {
+        if (response.result && response.result.first_name) {
+          $('#welcomeText').text('Welcome, ' + response.result.first_name + '. Shop supplies, track orders, and keep your profile updated.');
+        }
+      });
+    });
+  </script>
 </body>
 </html>

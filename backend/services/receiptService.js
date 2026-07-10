@@ -14,18 +14,19 @@ function formatDate(value) {
   });
 }
 
-function generateReceiptPdf(order) {
+function generateReceiptPdf({ orderId, createdAt, customerName, email, paymentMethod, item, status }) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
       margin: 48,
       size: 'A4',
       bufferPages: true,
       info: {
-        Title: `KitKart Receipt #${order.id}`,
+        Title: `KitKart Receipt #${orderId}`,
         Author: 'KitKart',
         Subject: 'Order receipt',
       },
     });
+
     const chunks = [];
     const pageWidth = doc.page.width;
     const pageHeight = doc.page.height;
@@ -40,7 +41,7 @@ function generateReceiptPdf(order) {
     const softInk = '#475569';
     const line = '#cbd5e1';
     const panel = '#f8fafc';
-    const items = Array.isArray(order.items) ? order.items : [];
+    const safeItem = item || {};
 
     doc.on('data', (chunk) => chunks.push(chunk));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
@@ -55,8 +56,8 @@ function generateReceiptPdf(order) {
       doc.restore();
     }
 
-    function statusColors(status) {
-      const normalized = String(status || '').toLowerCase();
+    function statusColors(value) {
+      const normalized = String(value || '').toLowerCase();
 
       if (normalized === 'cancelled') {
         return { bg: '#fee2e2', text: '#b91c1c' };
@@ -82,8 +83,8 @@ function generateReceiptPdf(order) {
       doc.font('Helvetica-Bold').fontSize(25).text('KitKart', left + 22, 54);
       doc.font('Helvetica').fontSize(11).text('Official order receipt', left + 22, 84);
       doc.fillColor('#ccfbf1').fontSize(9).text('School supplies made simple', left + 22, 104);
-      doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(12).text(`Receipt #${order.id}`, right - 140, 56, { width: 120, align: 'right' });
-      doc.font('Helvetica').fontSize(10).text(formatDate(order.created_at), right - 160, 82, { width: 140, align: 'right' });
+      doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(12).text(`Receipt #${orderId}`, right - 140, 56, { width: 120, align: 'right' });
+      doc.font('Helvetica').fontSize(10).text(formatDate(createdAt), right - 160, 82, { width: 140, align: 'right' });
     }
 
     function drawInfoGrid() {
@@ -99,12 +100,12 @@ function generateReceiptPdf(order) {
       doc.text('Payment', left + boxWidth + 28, top + 14);
 
       doc.fillColor(ink).font('Helvetica-Bold').fontSize(13);
-      doc.text(`${order.first_name} ${order.last_name}`, left + 16, top + 30, { width: boxWidth - 32 });
-      doc.text(order.payment_method, left + boxWidth + 28, top + 30, { width: boxWidth - 32 });
+      doc.text(customerName, left + 16, top + 30, { width: boxWidth - 32 });
+      doc.text(paymentMethod, left + boxWidth + 28, top + 30, { width: boxWidth - 32 });
 
       doc.fillColor(softInk).font('Helvetica').fontSize(9);
-      doc.text(order.email, left + 16, top + 52, { width: boxWidth - 32 });
-      doc.text(`${items.length} item${items.length === 1 ? '' : 's'} in this order`, left + boxWidth + 28, top + 52, { width: boxWidth - 32 });
+      doc.text(email, left + 16, top + 52, { width: boxWidth - 32 });
+      doc.text('1 updated item in this receipt', left + boxWidth + 28, top + 52, { width: boxWidth - 32 });
     }
 
     function drawTableHeader(y) {
@@ -119,9 +120,9 @@ function generateReceiptPdf(order) {
       return y + 28;
     }
 
-    function drawItemRow(y, item, index) {
+    function drawItemRow(y, currentItem, index) {
       const rowHeight = 42;
-      const colors = statusColors(item.status);
+      const colors = statusColors(currentItem.status);
       const rowFill = index % 2 === 0 ? '#ffffff' : '#f8fafc';
 
       doc.save();
@@ -130,12 +131,12 @@ function generateReceiptPdf(order) {
       doc.restore();
 
       doc.fillColor(ink).font('Helvetica-Bold').fontSize(10);
-      doc.text(item.product_name, left + 12, y + 10, { width: 210 });
+      doc.text(currentItem.product_name, left + 12, y + 10, { width: 210 });
       doc.fillColor(colors.text).font('Helvetica-Bold').fontSize(8);
-      doc.text(String(item.status || 'Pending'), left + 242, y + 16, { width: 84, align: 'center' });
+      doc.text(String(currentItem.status || 'Pending'), left + 242, y + 16, { width: 84, align: 'center' });
       doc.fillColor(ink).font('Helvetica').fontSize(10);
-      doc.text(String(item.quantity), left + 350, y + 12, { width: 40, align: 'center' });
-      doc.font('Helvetica-Bold').text(formatCurrency(item.subtotal), right - 112, y + 12, { width: 100, align: 'right' });
+      doc.text(String(currentItem.quantity), left + 350, y + 12, { width: 40, align: 'center' });
+      doc.font('Helvetica-Bold').text(formatCurrency(currentItem.subtotal), right - 112, y + 12, { width: 100, align: 'right' });
       return y + rowHeight + 8;
     }
 
@@ -145,9 +146,9 @@ function generateReceiptPdf(order) {
       doc.fillColor(softInk).font('Helvetica').fontSize(9);
       doc.text('Order total', left + contentWidth - 202, y + 14);
       doc.fillColor(ink).font('Helvetica-Bold').fontSize(18);
-      doc.text(formatCurrency(order.total), left + contentWidth - 202, y + 30, { width: 180, align: 'left' });
+      doc.text(formatCurrency(safeItem.subtotal), left + contentWidth - 202, y + 30, { width: 180, align: 'left' });
       doc.fillColor(warm).font('Helvetica-Bold').fontSize(9);
-      doc.text(`${items.length} item${items.length === 1 ? '' : 's'} purchased`, left + contentWidth - 202, y + 58, { width: 180 });
+      doc.text('1 updated item purchased', left + contentWidth - 202, y + 58, { width: 180 });
       doc.fillColor(softInk).font('Helvetica').fontSize(9);
       doc.text('Thank you for shopping with KitKart.', left, y + 28, { width: contentWidth - 240 });
     }
@@ -168,24 +169,15 @@ function generateReceiptPdf(order) {
     drawInfoGrid();
 
     let y = 262;
-    doc.fillColor(ink).font('Helvetica-Bold').fontSize(13).text('Order Items', left, y);
+    doc.fillColor(ink).font('Helvetica-Bold').fontSize(13).text('Updated Item', left, y);
     y += 18;
     y = drawTableHeader(y);
-
-    items.forEach((item, index) => {
-      if (y > bottom - 124) {
-        doc.addPage();
-        y = 64;
-        y = drawTableHeader(y);
-      }
-
-      y = drawItemRow(y, item, index);
-    });
-
-    if (y > bottom - 118) {
-      doc.addPage();
-      y = 64;
-    }
+    y = drawItemRow(y, {
+      product_name: safeItem.product_name,
+      status,
+      quantity: safeItem.quantity,
+      subtotal: safeItem.subtotal,
+    }, 0);
 
     drawSummary(Math.max(y + 8, 420));
     drawFooter();

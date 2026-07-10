@@ -18,6 +18,10 @@ const productUpload = upload.any();
 router.post('/register', authController.registerUser);
 router.post('/login', authController.loginUser);
 router.post('/logout', isAuthenticatedUser, authController.logoutUser);
+router.get('/me', isAuthenticatedUser, async (req, res) => {
+  const user = await require('../controllers/customerController').getCurrentUser(req);
+  return res.json({ success: true, result: user });
+});
 
 router.get('/users', isAuthenticatedUser, authorizeRoles('admin'), adminController.getAllUsers);
 router.put('/users/:id/role', isAuthenticatedUser, authorizeRoles('admin'), adminController.updateUserRole);
