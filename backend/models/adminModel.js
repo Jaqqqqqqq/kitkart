@@ -1,12 +1,45 @@
 const { Category, Order, OrderItem, Product, ProductImage, User } = require('../config/sequelize');
 
 const ORDER_ITEM_STATUSES = ['Pending', 'Shipped', 'Delivered', 'Cancelled'];
-const NEXT_ORDER_ITEM_STATUSES = {
-  Pending: ['Pending', 'Shipped', 'Cancelled'],
-  Shipped: ['Shipped', 'Delivered', 'Cancelled'],
-  Delivered: ['Delivered'],
-  Cancelled: ['Cancelled'],
-};
+const LOCKED_ORDER_ITEM_STATUSES = ['Shipped', 'Delivered'];
+
+function normalizeProductInput(input, mainImage = null) {
+  return {
+    category_id: Number(input.category_id),
+    product_name: String(input.product_name || '').trim(),
+    description: String(input.description || '').trim() || null,
+    price: Number(input.price),
+    stock_quantity: Number(input.stock_quantity),
+    image: mainImage || null,
+  };
+}
+
+function normalizeCategoryInput(input) {
+  return {
+    category_name: String(input.category_name || '').trim(),
+    description: String(input.description || '').trim() || null,
+  };
+}
+
+function validateProduct(product) {
+  if (!product.category_id || !product.product_name || Number.isNaN(product.price) || Number.isNaN(product.stock_quantity)) {
+    return 'Please fill in all required product fields.';
+  }
+
+  if (product.price < 0 || product.stock_quantity < 0) {
+    return 'Price and stock quantity cannot be negative.';
+  }
+
+  return null;
+}
+
+function validateCategory(category) {
+  if (!category.category_name) {
+    return 'Please enter a category name.';
+  }
+
+  return null;
+}
 
 async function getAllOrders() {
   const orders = await Order.findAll({
@@ -199,31 +232,25 @@ async function updateOrderItemStatus(itemId, status) {
     throw error;
   }
 
-    const orderItem = await OrderItem.findByPk(itemId);
+  const orderItem = await OrderItem.findByPk(itemId, {
+    attributes: ['id', 'status', 'order_id'],
+  });
 
-    if (!orderItem) {
-      const error = new Error('Order item not found.');
-      error.statusCode = 404;
-      throw error;
-    }
+  if (!orderItem) {
+    const error = new Error('Order item not found.');
+    error.statusCode = 404;
+    throw error;
+  }
 
-    const currentStatus = orderItem.status;
-    const allowedStatuses = NEXT_ORDER_ITEM_STATUSES[currentStatus] || [currentStatus];
+  if (LOCKED_ORDER_ITEM_STATUSES.includes(orderItem.status)) {
+    const error = new Error(`This item is already ${orderItem.status.toLowerCase()} and can no longer be changed.`);
+    error.statusCode = 400;
+    throw error;
+  }
 
-    if (!allowedStatuses.includes(status)) {
-      const error = new Error(`Cannot change status from ${currentStatus} to ${status}.`);
-      error.statusCode = 400;
-      throw error;
-    }
+  const [affectedRows] = await OrderItem.update({ status }, { where: { id: itemId } });
 
-    if (status === currentStatus) {
-      return 0;
-    }
-
-    await orderItem.update({ status });
-
-    return 1;
-
+  return affectedRows;
 }
 
 module.exports = {

@@ -24,11 +24,13 @@ const PORT = process.env.PORT || 3000;
 app.set('view engine', 'ejs');
 const frontendViewsPath = path.resolve(__dirname, '..', 'frontend', 'views');
 const frontendPublicPath = path.resolve(__dirname, '..', 'frontend', 'public');
+const frontendJsPath = path.resolve(__dirname, '..', 'frontend', 'js');
 const frontendImagesPath = path.resolve(__dirname, '..', 'frontend', 'public', 'images');
 
 app.set('views', frontendViewsPath);
 
 app.use(express.static(frontendPublicPath));
+app.use('/js', express.static(frontendJsPath));
 app.use('/images', express.static(frontendImagesPath));
 
 const upload = multer({

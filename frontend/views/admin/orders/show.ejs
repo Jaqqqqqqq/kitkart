@@ -6,28 +6,25 @@
   <title><%= title %></title>
   <link rel="stylesheet" href="/css/catalog.css">
   <style>
-.status-message{
-    display:none;
-    margin-bottom:15px;
-    padding:12px;
-    border-radius:6px;
-    background:#d1fae5;
-    color:#065f46;
-    border:1px solid #10b981;
-    font-weight:600;
-}
-</style>
+    .status-message {
+      display: none;
+      margin-bottom: 15px;
+      padding: 12px;
+      border-radius: 6px;
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #10b981;
+      font-weight: 600;
+    }
+  </style>
 </head>
 <body>
 
 <main class="page">
-
   <header class="catalog-header">
     <div>
       <a href="/admin/orders" class="back-link">← Back to all orders</a>
-
       <h1>Order #<%= order.id %></h1>
-
       <p>
         <%= order.first_name %>
         <%= order.last_name %>
@@ -38,193 +35,106 @@
   </header>
 
   <section class="cart-panel">
+    <div id="statusMessage" class="status-message"></div>
 
-  <div id="statusMessage" class="status-message"></div>
-
-  <p>
+    <p>
       Payment:
       <strong><%= order.payment_method %></strong>
-  </p>
+    </p>
 
     <div class="cart-table-wrap">
-
       <table class="cart-table">
-
         <thead>
-
           <tr>
-
             <th>Product</th>
             <th>Price</th>
             <th>Quantity</th>
             <th>Subtotal</th>
             <th>Status</th>
             <th></th>
-
           </tr>
-
         </thead>
-
         <tbody>
-
-        <%
-          const statusTransitions = {
-            Pending: ['Pending', 'Shipped', 'Cancelled'],
-            Shipped: ['Shipped', 'Delivered', 'Cancelled'],
-            Delivered: ['Delivered'],
-            Cancelled: ['Cancelled'],
-          };
-        %>
-
-        <% order.items.forEach((item)=>{ %>
-          <% const allowedStatuses = statusTransitions[item.status] || [item.status]; %>
-
-          <tr>
-
-            <td><%= item.product_name %></td>
-
-            <td>
-              PHP <%= item.price.toFixed(2) %>
-            </td>
-
-            <td>
-              <%= item.quantity %>
-            </td>
-
-            <td>
-              PHP <%= item.subtotal.toFixed(2) %>
-            </td>
-
-            <td>
-
-              <select
+          <% order.items.forEach((item)=>{ 
+               const isLocked = item.status === 'Shipped' || item.status === 'Delivered';
+          %>
+            <tr>
+              <td><%= item.product_name %></td>
+              <td>PHP <%= item.price.toFixed(2) %></td>
+              <td><%= item.quantity %></td>
+              <td>PHP <%= item.subtotal.toFixed(2) %></td>
+              <td>
+                <select
                   class="itemStatus"
-                  data-id="<%= item.id %>">
-
-                <% allowedStatuses.forEach((status)=>{ %>
-                  <option
+                  data-id="<%= item.id %>"
+                  <%= isLocked ? 'disabled' : '' %>>
+                  <% ['Pending', 'Shipped', 'Delivered', 'Cancelled'].forEach((status)=>{ %>
+                    <option
                       value="<%= status %>"
                       <%= item.status===status?"selected":"" %>>
                       <%= status %>
-                  </option>
-                <% }) %>
-
-              </select>
-
-            </td>
-
-            <td>
-
-              <button
-                class="saveStatus"
-                data-id="<%= item.id %>">
-
-                Save
-
-              </button>
-
-            </td>
-
-          </tr>
-
-        <% }) %>
-
+                    </option>
+                  <% }) %>
+                </select>
+              </td>
+              <td>
+                <button
+                  class="saveStatus"
+                  data-id="<%= item.id %>"
+                  <%= isLocked ? 'disabled' : '' %>>
+                  Save
+                </button>
+                <% if (isLocked) { %>
+                  <div style="margin-top: 6px; font-size: 0.85rem; color: #6b7280;">
+                    Locked once <%= item.status.toLowerCase() %>.
+                  </div>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
         </tbody>
-
       </table>
-
     </div>
 
     <div class="cart-summary">
-
       <p></p>
-
       <p>
-
         Total:
-
         PHP
         <strong><%= order.total.toFixed(2) %></strong>
-
       </p>
-
     </div>
-
   </section>
-
 </main>
 
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
 <script>
-
-const statusTransitions = {
-    Pending: ["Pending", "Shipped", "Cancelled"],
-    Shipped: ["Shipped", "Delivered", "Cancelled"],
-    Delivered: ["Delivered"],
-    Cancelled: ["Cancelled"]
-};
-
-function updateStatusOptions($select,status){
-    const options=statusTransitions[status] || [status];
-
-    $select.empty();
-
-    options.forEach(function(option){
-        $("<option>")
-            .val(option)
-            .text(option)
-            .prop("selected",option===status)
-            .appendTo($select);
-    });
-}
-
 $(document).on("click",".saveStatus",function(){
-
-    const $button=$(this);
-    const $row=$button.closest("tr");
-    const $select=$row.find(".itemStatus");
     const itemId=$(this).data("id");
-
-    const status=$select.val();
+    const status=$(this).closest("tr").find(".itemStatus").val();
 
     $.ajax({
-
         url:"/admin/orders/items/"+itemId+"/status",
-
         type:"PUT",
-
-        contentType: "application/json",
-        
-        data: JSON.stringify({
-            status:status
-        }),
-
+        contentType:"application/json",
+        data: JSON.stringify({ status }),
         success:function(response){
+            $("#statusMessage")
+                .css({
+                    background:"#d1fae5",
+                    color:"#065f46",
+                    border:"1px solid #10b981"
+                })
+                .text("✓ " + (response.message || "Status updated successfully"))
+                .fadeIn();
 
-    updateStatusOptions($select,status);
-
-    $("#statusMessage")
-        .css({
-            background:"#d1fae5",
-            color:"#065f46",
-            border:"1px solid #10b981"
-        })
-        .text("✓ " + (response.message || "Status updated successfully"))
-        .fadeIn();
-
-    setTimeout(function(){
-
-        $("#statusMessage").fadeOut();
-
-    },2500);
-
-},
-
+            setTimeout(function(){
+                $("#statusMessage").fadeOut();
+            },2500);
+        },
         error:function(xhr){
-
             let errorMessage = "Unable to update order status.";
-            
+
             if (xhr.responseJSON?.message) {
                 errorMessage = xhr.responseJSON.message;
             } else if (xhr.status === 401) {
@@ -233,21 +143,17 @@ $(document).on("click",".saveStatus",function(){
                 errorMessage = "You do not have permission to update orders.";
             }
 
-    $("#statusMessage")
-        .css({
-            background:"#fee2e2",
-            color:"#991b1b",
-            border:"1px solid #dc2626"
-        })
-        .text("✗ " + errorMessage)
-        .fadeIn();
-
-}
-
+            $("#statusMessage")
+                .css({
+                    background:"#fee2e2",
+                    color:"#991b1b",
+                    border:"1px solid #dc2626"
+                })
+                .text("✗ " + errorMessage)
+                .fadeIn();
+        }
     });
-
 });
-
 </script>
 
 </body>

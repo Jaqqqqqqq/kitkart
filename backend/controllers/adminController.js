@@ -355,16 +355,49 @@ async function updateOrderItemStatus(req,res){
         let emailStatus = 'sent';
 
         if (order) {
-            try {
+          try {
                 const receiptPdf = await generateReceiptPdf(order);
+                const updatedStatus = String(req.body.status || '').toLowerCase();
 
                 const mailResult = await sendTransactionUpdateEmail({
                     to: order.email,
                     subject: `KitKart Order #${order.id} Status Updated`,
                     html: `
-                        <p>Hello ${order.first_name},</p>
-                        <p>Your KitKart order #${order.id} was updated to <strong>${req.body.status}</strong>.</p>
-                        <p>Your updated receipt is attached as a PDF.</p>
+                        <div style="margin:0;background:#f8fafc;padding:24px 0;font-family:Arial,sans-serif;color:#0f172a;">
+                          <div style="max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;box-shadow:0 16px 40px rgba(15,23,42,0.08);">
+                            <div style="background:linear-gradient(135deg,#0f766e,#14b8a6);padding:28px 32px;color:#ffffff;">
+                              <div style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;opacity:.9;">KitKart</div>
+                              <div style="font-size:28px;font-weight:700;margin-top:8px;">Order status updated</div>
+                              <div style="font-size:14px;opacity:.95;margin-top:8px;">Order #${order.id} is now <strong>${req.body.status}</strong>.</div>
+                            </div>
+
+                            <div style="padding:32px;">
+                              <p style="font-size:16px;line-height:1.6;margin:0 0 18px;">Hello ${order.first_name},</p>
+                              <p style="font-size:14px;line-height:1.7;color:#334155;margin:0 0 18px;">We’ve updated the status of your order and attached a polished PDF receipt for your records.</p>
+
+                              <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:18px 20px;margin:0 0 24px;">
+                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                                  <tr>
+                                    <td style="padding:6px 0;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:.08em;">Order</td>
+                                    <td style="padding:6px 0;color:#0f172a;font-weight:700;text-align:right;">#${order.id}</td>
+                                  </tr>
+                                  <tr>
+                                    <td style="padding:6px 0;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:.08em;">Status</td>
+                                    <td style="padding:6px 0;color:#0f172a;font-weight:700;text-align:right;">${req.body.status}</td>
+                                  </tr>
+                                  <tr>
+                                    <td style="padding:6px 0;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:.08em;">Customer</td>
+                                    <td style="padding:6px 0;color:#0f172a;font-weight:700;text-align:right;">${order.first_name} ${order.last_name}</td>
+                                  </tr>
+                                </table>
+                              </div>
+
+                              <div style="display:block;background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:16px 18px;color:#9a3412;font-size:13px;line-height:1.6;">
+                                Your receipt PDF is attached below. If you need help, reply to this email and we’ll take care of it.
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                     `,
                     attachments: [
                         {
