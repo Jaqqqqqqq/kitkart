@@ -8,22 +8,33 @@
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
 <body>
-  <main class="dashboard-panel">
-    <h1>Orders</h1>
-    <p><a href="/admin/dashboard">Back to dashboard</a></p>
-    <table class="data-table" id="ordersTable">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Customer</th>
-          <th>Payment</th>
-          <th>Items</th>
-          <th>Total</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+  <main class="page">
+    <header class="catalog-header">
+      <div>
+        <a href="/admin/dashboard" class="back-link">Dashboard</a>
+        <p class="eyebrow">Transactions</p>
+        <h1>Orders</h1>
+        <p class="meta-copy">Review customer orders and update item fulfillment from the details page.</p>
+      </div>
+    </header>
+
+    <section class="cart-panel">
+      <div class="cart-table-wrap">
+        <table class="data-table cart-table" id="ordersTable">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Customer</th>
+              <th>Payment</th>
+              <th>Items</th>
+              <th>Total</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
   </main>
   <script>
     $(function () {
@@ -32,11 +43,11 @@
         const html = rows.map((order) => `
           <tr>
             <td>#${order.id}</td>
-            <td>${order.first_name} ${order.last_name}<br>${order.email}</td>
+            <td><strong>${order.first_name} ${order.last_name}</strong><span class="table-subtext">${order.email}</span></td>
             <td>${order.payment_method}</td>
             <td>${order.item_count}</td>
             <td>PHP ${Number(order.total).toFixed(2)}</td>
-            <td><a href="/admin/orders/${order.id}">View</a></td>
+            <td><a href="/admin/orders/${order.id}" class="action-link">View</a></td>
           </tr>
         `).join('');
         $('#ordersTable tbody').html(html || '<tr><td colspan="6">No orders found.</td></tr>');

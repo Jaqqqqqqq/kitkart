@@ -5,6 +5,10 @@ const path = require('path');
 const Category = db.Category;
 const Product = db.Product;
 const ProductImage = db.ProductImage;
+const CartItem = db.CartItem;
+const OrderItem = db.OrderItem;
+const Review = db.Review;
+const sequelize = db.sequelize;
 
 async function index(req, res) {
   try {
@@ -235,9 +239,13 @@ async function deleteProductApi(req, res) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
-      // remove associated gallery images first to avoid FK constraint errors
-      await ProductImage.destroy({ where: { product_id: product.id } });
-      await product.destroy();
+    await sequelize.transaction(async (transaction) => {
+      await Review.destroy({ where: { product_id: product.id }, transaction });
+      await CartItem.destroy({ where: { product_id: product.id }, transaction });
+      await OrderItem.destroy({ where: { product_id: product.id }, transaction });
+      await ProductImage.destroy({ where: { product_id: product.id }, transaction });
+      await product.destroy({ transaction });
+    });
 
     return res.status(200).json({
       success: true,

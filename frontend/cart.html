@@ -53,6 +53,7 @@
   </main>
 
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="/js/ui.js"></script>
   <script>
     $(function () {
       function money(value) {
@@ -130,10 +131,18 @@
           method: methodMap[action],
           dataType: 'json',
           success: function () {
+            const labelMap = {
+              increase: 'Cart item quantity increased.',
+              decrease: 'Cart item quantity decreased.',
+              remove: 'Item removed from cart.',
+            };
+            showPopup(labelMap[action] || 'Cart updated.', 'success');
             loadCart();
           },
           error: function (xhr) {
-            $('#cartMessage').addClass('is-error').text(xhr.responseJSON?.message || 'Unable to update cart.');
+            const message = xhr.responseJSON?.message || 'Unable to update cart.';
+            $('#cartMessage').addClass('is-error').text(message);
+            showPopup(message, 'error');
           }
         });
       });

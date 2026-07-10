@@ -8,10 +8,32 @@
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
 <body>
-  <main class="dashboard-panel">
-    <h1>Reviews</h1>
-    <p><a href="/admin/dashboard">Back to dashboard</a></p>
-    <table class="data-table" id="reviewsTable"><thead><tr><th>Product</th><th>Customer</th><th>Order</th><th>Rating</th><th>Review</th></tr></thead><tbody></tbody></table>
+  <main class="page">
+    <header class="catalog-header">
+      <div>
+        <a href="/admin/dashboard" class="back-link">Dashboard</a>
+        <p class="eyebrow">Feedback</p>
+        <h1>Reviews</h1>
+        <p class="meta-copy">Read customer product feedback connected to delivered orders.</p>
+      </div>
+    </header>
+
+    <section class="cart-panel">
+      <div class="cart-table-wrap">
+        <table class="data-table cart-table" id="reviewsTable">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Customer</th>
+              <th>Order</th>
+              <th>Rating</th>
+              <th>Review</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
   </main>
   <script>
     $(function () {
@@ -20,7 +42,7 @@
         $('#reviewsTable tbody').html(rows.map((review) => `
           <tr>
             <td>${review.product_name}</td>
-            <td>${review.customer_name}<br>${review.customer_email}</td>
+            <td><strong>${review.customer_name}</strong><span class="table-subtext">${review.customer_email}</span></td>
             <td>#${review.order_id}</td>
             <td>${review.rating}/5</td>
             <td>${review.review_text}</td>

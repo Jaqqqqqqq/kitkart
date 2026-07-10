@@ -49,7 +49,12 @@ async function updateProfile(req, res) {
 
         console.log(err);
 
-        res.status(err.statusCode || 500).send(err.message || "Unable to update profile.");
+        const wantsJson = req.xhr || (req.headers.accept && req.headers.accept.indexOf('application/json') !== -1) || (req.headers['content-type'] && req.headers['content-type'].indexOf('application/json') !== -1);
+        if (wantsJson) {
+            return res.status(err.statusCode || 500).json({ success: false, message: err.message || 'Unable to update profile.' });
+        }
+
+        return res.status(err.statusCode || 500).send(err.message || "Unable to update profile.");
 
     }
 

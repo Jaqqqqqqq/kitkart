@@ -30,7 +30,14 @@
           url: '/reviews/' + reviewId + '/edit',
           data: { rating: $('#rating').val(), review_text: $('#review_text').val() },
           dataType: 'json',
-          success: function (data) { if (data && data.success) { window.location.href = '/shop/' + (data.productId || ''); } else { showPopup(data?.message || 'Save failed.', 'error'); } },
+          success: function (data) {
+            if (data && data.success) {
+              showPopup(data.message || 'Review updated.', 'success');
+              setTimeout(function () { window.location.href = '/shop/' + (data.productId || ''); }, 700);
+            } else {
+              showPopup(data?.message || 'Save failed.', 'error');
+            }
+          },
           error: function (xhr) { showPopup(xhr.responseJSON?.message || xhr.responseText || 'Save failed.', 'error'); }
         });
       });
@@ -39,7 +46,14 @@
           method: 'POST',
           url: '/reviews/' + reviewId + '/delete',
           dataType: 'json',
-          success: function (data) { if (data && data.success) { window.location.href = '/shop'; } else { showPopup(data?.message || 'Delete failed.', 'error'); } },
+          success: function (data) {
+            if (data && data.success) {
+              showPopup(data.message || 'Review deleted.', 'success');
+              setTimeout(function () { window.location.href = '/shop'; }, 700);
+            } else {
+              showPopup(data?.message || 'Delete failed.', 'error');
+            }
+          },
           error: function (xhr) { showPopup(xhr.responseJSON?.message || xhr.responseText || 'Delete failed.', 'error'); }
         });
       });

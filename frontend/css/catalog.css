@@ -542,6 +542,10 @@ button:disabled { background: #b0b8c8; box-shadow: none; cursor: not-allowed; tr
   overflow: hidden;
 }
 
+.dashboard-panel {
+  margin: 28px auto;
+}
+
 .detail-cart-form { max-width: 320px; }
 
 .image-list {
@@ -596,16 +600,25 @@ button:disabled { background: #b0b8c8; box-shadow: none; cursor: not-allowed; tr
 }
 
 .cart-table-wrap { overflow-x: auto; }
-.cart-table { width: 100%; border-collapse: collapse; }
+.cart-table,
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+}
 .cart-table th,
-.cart-table td {
+.cart-table td,
+.data-table th,
+.data-table td {
   border-bottom: 1px solid rgba(0, 102, 255, 0.08);
-  padding: 14px;
+  padding: 14px 16px;
   text-align: left;
-  vertical-align: middle;
+  vertical-align: top;
+  overflow-wrap: anywhere;
 }
 
-.cart-table th {
+.cart-table th,
+.data-table th {
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
@@ -614,12 +627,22 @@ button:disabled { background: #b0b8c8; box-shadow: none; cursor: not-allowed; tr
   background: linear-gradient(90deg, rgba(230, 241, 255, 0.4), rgba(230, 241, 255, 0.2));
 }
 
-.cart-table tbody tr {
+.cart-table tbody tr,
+.data-table tbody tr {
   transition: background 0.2s ease;
 }
 
-.cart-table tbody tr:hover {
+.cart-table tbody tr:hover,
+.data-table tbody tr:hover {
   background: rgba(0, 102, 255, 0.04);
+}
+
+.table-subtext {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .cart-table.display {

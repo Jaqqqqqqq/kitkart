@@ -5,6 +5,12 @@ const path = require('path');
 const { buildTransactionUpdateEmail, sendTransactionUpdateEmail } = require('../services/mailService');
 const { generateReceiptPdf } = require('../services/receiptService');
 const Category = db.Category;
+const Product = db.Product;
+const ProductImage = db.ProductImage;
+const CartItem = db.CartItem;
+const OrderItem = db.OrderItem;
+const Review = db.Review;
+const sequelize = db.sequelize;
 
 function productFormDefaults(product = {}) {
   return {
@@ -255,14 +261,24 @@ async function deleteCategoryApi(req, res) {
       return res.status(404).json({ success: false, message: 'Category not found' });
     }
 
-    // prevent deleting a category that still has products
-    const Product = require('../config/sequelize').Product;
-    const count = await Product.count({ where: { category_id: category.id } });
-    if (count > 0) {
-      return res.status(400).json({ success: false, message: 'Cannot delete category with existing products. Remove products first.' });
-    }
+    await sequelize.transaction(async (transaction) => {
+      const products = await Product.findAll({
+        where: { category_id: category.id },
+        attributes: ['id'],
+        transaction,
+      });
+      const productIds = products.map((product) => product.id);
 
-    await category.destroy();
+      if (productIds.length > 0) {
+        await Review.destroy({ where: { product_id: productIds }, transaction });
+        await CartItem.destroy({ where: { product_id: productIds }, transaction });
+        await OrderItem.destroy({ where: { product_id: productIds }, transaction });
+        await ProductImage.destroy({ where: { product_id: productIds }, transaction });
+        await Product.destroy({ where: { id: productIds }, transaction });
+      }
+
+      await category.destroy({ transaction });
+    });
 
     return res.status(200).json({
       success: true,
@@ -330,10 +346,10 @@ async function updateOrderItemStatus(req, res) {
     return res.json({
       success: true,
       message: emailStatus === 'sent'
-        ? 'Updated. Email receipt sent.'
+        ? 'Order status updated successfully. Email receipt sent.'
         : emailStatus === 'skipped'
-          ? 'Updated. Email skipped because Mailtrap is not configured.'
-          : 'Updated. Email receipt could not be sent.',
+          ? 'Order status updated successfully. Email skipped because Mailtrap is not configured.'
+          : 'Order status updated successfully. Email receipt could not be sent.',
       emailStatus,
     });
   } catch (err) {
@@ -347,6 +363,32 @@ async function updateOrderItemStatus(req, res) {
       success: false,
       message: err.message || 'Unable to update item status.',
     });
+  }
+}
+
+async function deleteProductApi(req, res) {
+  try {
+    const product = await Product.findByPk(req.params.id);
+
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found.' });
+    }
+
+    await sequelize.transaction(async (transaction) => {
+      await Review.destroy({ where: { product_id: product.id }, transaction });
+      await CartItem.destroy({ where: { product_id: product.id }, transaction });
+      await OrderItem.destroy({ where: { product_id: product.id }, transaction });
+      await ProductImage.destroy({ where: { product_id: product.id }, transaction });
+      await product.destroy({ transaction });
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Product deleted successfully',
+    });
+  } catch (error) {
+    console.error('Product delete error:', error.message, error);
+    return res.status(500).json({ success: false, message: error.message || 'Error deleting product' });
   }
 }
 
@@ -426,6 +468,7 @@ module.exports = {
   getReviewsApi,
   getProductApi,
   getCategoryApi,
+  deleteProductApi,
   updateCategoryApi,
   updateUserRole,
   updateUserStatus,

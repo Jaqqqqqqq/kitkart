@@ -55,6 +55,7 @@
     </form>
   </main>
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="/js/ui.js"></script>
   <script>
     $(function () {
       // Try to fetch the current user (works with session cookie or token-based auth)
@@ -96,12 +97,17 @@
         $.ajax({
           url: '/profile/edit',
           method: 'POST',
+          dataType: 'json',
           data: $(this).serialize(),
-          success: function () {
-            $('#profileMessage').removeClass('hidden').text('Profile updated.');
+          success: function (response) {
+            const message = response.message || 'Profile updated.';
+            $('#profileMessage').removeClass('hidden').text(message);
+            showPopup(message, 'success');
           },
           error: function (xhr) {
-            $('#profileMessage').removeClass('hidden').text(xhr.responseText || 'Unable to update profile.');
+            const message = xhr.responseJSON?.message || xhr.responseText || 'Unable to update profile.';
+            $('#profileMessage').removeClass('hidden').text(message);
+            showPopup(message, 'error');
           }
         });
       });

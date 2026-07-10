@@ -276,7 +276,7 @@ $(function () {
     $(this).closest('.editable-image').addClass('is-removed');
   });
 
-  $('.js-api-delete').on('submit', function (event) {
+  $(document).on('submit', '.js-api-delete', function (event) {
     event.preventDefault();
 
     const $form = $(this);

@@ -120,6 +120,62 @@ function buildTransactionUpdateEmail({ orderId, customerName, item, status, paym
   `;
 }
 
+function buildOrderPlacedEmail({ orderId, customerName, paymentMethod, items }) {
+  const safeOrderId = escapeHtml(orderId);
+  const safeCustomerName = escapeHtml(customerName || 'there');
+  const safePaymentMethod = escapeHtml(paymentMethod || 'Not specified');
+  const safeItems = Array.isArray(items) ? items : [];
+  const total = safeItems.reduce((sum, currentItem) => sum + Number(currentItem.subtotal || 0), 0);
+
+  return `
+    <div style="margin:0;background:#eef4fb;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;color:#102033;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+        <tr>
+          <td align="center">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:680px;border-collapse:collapse;background:#ffffff;border:1px solid #d9e4ef;border-radius:18px;overflow:hidden;box-shadow:0 18px 44px rgba(15,23,42,0.12);">
+              <tr>
+                <td style="background:#0f766e;padding:28px 32px;color:#ffffff;">
+                  <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:700;">KitKart Order Receipt</div>
+                  <h1 style="margin:10px 0 0;font-size:28px;line-height:1.2;font-weight:800;">Your order is confirmed</h1>
+                  <p style="margin:8px 0 0;font-size:14px;line-height:1.6;color:#d9fffb;">Order #${safeOrderId} was placed successfully.</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:30px 32px 26px;">
+                  <p style="margin:0 0 18px;font-size:16px;line-height:1.6;">Hello ${safeCustomerName},</p>
+                  <p style="margin:0 0 22px;font-size:14px;line-height:1.7;color:#475569;">Thanks for your purchase. We attached a PDF copy of your receipt with the order details for your records.</p>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;border-spacing:0;background:#f8fafc;border:1px solid #d9e4ef;border-radius:14px;overflow:hidden;margin:0 0 22px;">
+                    <tr>
+                      <td style="padding:16px 18px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Order</td>
+                      <td align="right" style="padding:16px 18px;border-bottom:1px solid #e2e8f0;color:#102033;font-size:15px;font-weight:800;">#${safeOrderId}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:16px 18px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Payment</td>
+                      <td align="right" style="padding:16px 18px;border-bottom:1px solid #e2e8f0;color:#102033;font-size:14px;font-weight:700;">${safePaymentMethod}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:16px 18px;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Items</td>
+                      <td align="right" style="padding:16px 18px;color:#102033;font-size:14px;font-weight:700;">${safeItems.length} item(s)</td>
+                    </tr>
+                  </table>
+                  <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:15px 18px;color:#9a3412;font-size:13px;line-height:1.6;">
+                    Order total: ${formatCurrency(total)}
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:18px 32px;background:#f1f5f9;border-top:1px solid #d9e4ef;color:#64748b;font-size:12px;line-height:1.6;">
+                  If you need help with your order, reply to this email and we will help you out.
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </div>
+  `;
+}
+
 async function sendTransactionUpdateEmail({ to, subject, html, attachments = [] }) {
   if (!hasMailtrapConfig()) {
     console.warn('Mailtrap email skipped: missing MAILTRAP_* environment variables.');
@@ -139,5 +195,6 @@ async function sendTransactionUpdateEmail({ to, subject, html, attachments = [] 
 
 module.exports = {
   buildTransactionUpdateEmail,
+  buildOrderPlacedEmail,
   sendTransactionUpdateEmail,
 };

@@ -12,19 +12,22 @@
   <main class="dashboard-panel">
     <p><a href="/admin/categories">Back</a></p>
     <h1 id="pageTitle">Category Form</h1>
-    <form id="categoryForm">
-      <div class="form-field"><label>Category Name</label><input id="category_name" required></div>
-      <div class="form-field"><label>Description</label><textarea id="description" rows="4"></textarea></div>
+    <form id="categoryForm" class="js-admin-form js-api-form" novalidate data-api-url="/api/v1/categories" data-api-method="POST" data-redirect="/admin/categories">
+      <div class="form-field"><label for="category_name">Category Name</label><input id="category_name" required><span class="field-help"></span></div>
+      <div class="form-field"><label for="description">Description</label><textarea id="description" rows="4"></textarea><span class="field-help"></span></div>
       <button type="submit">Save</button>
     </form>
   </main>
+  <div id="toast" class="msg-toast"></div>
   <script>
     $(function () {
       const match = window.location.pathname.match(/\/admin\/categories\/(\d+)\/edit/);
       const id = match ? match[1] : null;
       const apiUrl = id ? '/api/v1/categories/' + id : '/api/v1/categories';
+      const $form = $('#categoryForm');
       if (id) {
         $('#pageTitle').text('Edit Category');
+        $form.attr('data-api-method', 'PUT').attr('data-api-url', apiUrl);
         $.getJSON('/admin/api/categories/' + id, function (response) {
           $('#category_name').val(response.result.category_name || '');
           $('#description').val(response.result.description || '');
@@ -32,21 +35,8 @@
       } else {
         $('#pageTitle').text('Add Category');
       }
-      $('#categoryForm').on('submit', function (e) {
-        e.preventDefault();
-        $.ajax({
-          method: id ? 'PUT' : 'POST',
-          url: apiUrl,
-          contentType: 'application/json',
-          data: JSON.stringify({
-            category_name: $('#category_name').val(),
-            description: $('#description').val()
-          }),
-          success: function () { window.location.href = '/admin/categories'; },
-          error: function (xhr) { showPopup(xhr.responseJSON?.message || 'Save failed.', 'error'); }
-        });
-      });
     });
   </script>
+  <script src="/js/admin-crud.js"></script>
 </body>
 </html>

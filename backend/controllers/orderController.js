@@ -1,5 +1,7 @@
 const orderModel = require('../models/orderModel');
 const path = require('path');
+const { buildOrderPlacedEmail, sendTransactionUpdateEmail } = require('../services/mailService');
+const { generateReceiptPdf } = require('../services/receiptService');
 
 async function checkoutPage(req, res) {
   try {
@@ -103,10 +105,51 @@ async function createOrder(req, res) {
   try {
     const orderId = await orderModel.createOrderFromCart(req.user.id, req.body.payment_method);
     const order = await orderModel.getOrderForUser(req.user.id, orderId);
+    const customerName = `${req.user.first_name || ''} ${req.user.last_name || ''}`.trim();
+    let emailStatus = 'sent';
+
+    try {
+      const receiptPdf = await generateReceiptPdf({
+        orderId: order.id,
+        createdAt: order.created_at,
+        customerName,
+        email: req.user.email,
+        paymentMethod: order.payment_method,
+        items: order.items,
+      });
+
+      const mailResult = await sendTransactionUpdateEmail({
+        to: req.user.email,
+        subject: `KitKart Order #${order.id} Confirmation`,
+        html: buildOrderPlacedEmail({
+          orderId: order.id,
+          customerName,
+          paymentMethod: order.payment_method,
+          items: order.items,
+        }),
+        attachments: [
+          {
+            filename: `kitkart-order-${order.id}-receipt.pdf`,
+            content: receiptPdf,
+            contentType: 'application/pdf',
+          },
+        ],
+      });
+
+      emailStatus = mailResult?.skipped ? 'skipped' : 'sent';
+    } catch (mailError) {
+      emailStatus = 'failed';
+      console.error('Unable to send order receipt email:', mailError);
+    }
 
     return res.status(201).json({
       success: true,
-      message: 'Order placed successfully',
+      message: emailStatus === 'sent'
+        ? 'Order placed successfully. Receipt email sent.'
+        : emailStatus === 'skipped'
+          ? 'Order placed successfully. Email skipped because Mailtrap is not configured.'
+          : 'Order placed successfully. Receipt email could not be sent.',
+      emailStatus,
       result: order,
     });
   } catch (error) {

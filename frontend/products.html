@@ -50,6 +50,7 @@
   </main>
 
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="/js/ui.js"></script>
   <script src="/js/catalog.js"></script>
   <script>
     $(function () {
@@ -81,7 +82,7 @@
                 <form class="add-to-cart-form" action="/cart/items" method="POST">
                   <input type="hidden" name="product_id" value="${product.id}">
                   <input type="hidden" name="quantity" value="1">
-                  <button type="submit" ${Number(product.stock_quantity) < 1 ? 'disabled' : ''}>Add to Cart</button>
+                  <button type="submit" ${Number(product.stock_quantity) < 1 ? 'disabled' : ''} data-requires-login="true">Add to Cart</button>
                   <span class="cart-message" aria-live="polite"></span>
                 </form>
               </div>

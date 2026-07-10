@@ -197,7 +197,8 @@
                   throw new Error(body.message || 'Unable to cancel order.');
                 }
 
-                window.location.reload();
+                showPopup(body.message || 'Order cancelled successfully.', 'success');
+                setTimeout(() => window.location.reload(), 700);
               })
                 .catch((error) => {
                   showPopup(error.message || 'Unable to cancel order.', 'error');

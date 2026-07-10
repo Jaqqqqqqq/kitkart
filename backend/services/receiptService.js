@@ -14,7 +14,7 @@ function formatDate(value) {
   });
 }
 
-function generateReceiptPdf({ orderId, createdAt, customerName, email, paymentMethod, item, status }) {
+function generateReceiptPdf({ orderId, createdAt, customerName, email, paymentMethod, item, items, status }) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
       margin: 48,
@@ -41,7 +41,7 @@ function generateReceiptPdf({ orderId, createdAt, customerName, email, paymentMe
     const softInk = '#475569';
     const line = '#cbd5e1';
     const panel = '#f8fafc';
-    const safeItem = item || {};
+    const safeItems = Array.isArray(items) && items.length ? items : (item ? [item] : []);
 
     doc.on('data', (chunk) => chunks.push(chunk));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
@@ -105,7 +105,7 @@ function generateReceiptPdf({ orderId, createdAt, customerName, email, paymentMe
 
       doc.fillColor(softInk).font('Helvetica').fontSize(9);
       doc.text(email, left + 16, top + 52, { width: boxWidth - 32 });
-      doc.text('1 updated item in this receipt', left + boxWidth + 28, top + 52, { width: boxWidth - 32 });
+      doc.text(`${safeItems.length} item(s) in this receipt`, left + boxWidth + 28, top + 52, { width: boxWidth - 32 });
     }
 
     function drawTableHeader(y) {
@@ -146,9 +146,9 @@ function generateReceiptPdf({ orderId, createdAt, customerName, email, paymentMe
       doc.fillColor(softInk).font('Helvetica').fontSize(9);
       doc.text('Order total', left + contentWidth - 202, y + 14);
       doc.fillColor(ink).font('Helvetica-Bold').fontSize(18);
-      doc.text(formatCurrency(safeItem.subtotal), left + contentWidth - 202, y + 30, { width: 180, align: 'left' });
+      doc.text(formatCurrency(safeItems.reduce((sum, currentItem) => sum + Number(currentItem.subtotal || 0), 0)), left + contentWidth - 202, y + 30, { width: 180, align: 'left' });
       doc.fillColor(warm).font('Helvetica-Bold').fontSize(9);
-      doc.text('1 updated item purchased', left + contentWidth - 202, y + 58, { width: 180 });
+      doc.text(`${safeItems.length} item(s) purchased`, left + contentWidth - 202, y + 58, { width: 180 });
       doc.fillColor(softInk).font('Helvetica').fontSize(9);
       doc.text('Thank you for shopping with KitKart.', left, y + 28, { width: contentWidth - 240 });
     }
@@ -172,12 +172,14 @@ function generateReceiptPdf({ orderId, createdAt, customerName, email, paymentMe
     doc.fillColor(ink).font('Helvetica-Bold').fontSize(13).text('Updated Item', left, y);
     y += 18;
     y = drawTableHeader(y);
-    y = drawItemRow(y, {
-      product_name: safeItem.product_name,
-      status,
-      quantity: safeItem.quantity,
-      subtotal: safeItem.subtotal,
-    }, 0);
+    safeItems.forEach((currentItem, index) => {
+      y = drawItemRow(y, {
+        product_name: currentItem.product_name,
+        status: currentItem.status || status,
+        quantity: currentItem.quantity,
+        subtotal: currentItem.subtotal,
+      }, index);
+    });
 
     drawSummary(Math.max(y + 8, 420));
     drawFooter();

@@ -12,10 +12,23 @@
   <main class="dashboard-panel">
     <p><a href="/admin/dashboard">Back</a></p>
     <h1>Charts</h1>
-    <canvas id="salesChart"></canvas>
-    <canvas id="itemsChart"></canvas>
-    <canvas id="usersChart"></canvas>
+    <section id="dashboardCharts" class="dashboard-charts">
+      <article class="chart-card">
+        <h2>Yearly Sales</h2>
+        <canvas id="yearlySalesBarChart"></canvas>
+      </article>
+      <article class="chart-card">
+        <h2>Revenue by Month</h2>
+        <canvas id="revenueLineChart"></canvas>
+      </article>
+      <article class="chart-card">
+        <h2>Product Sales</h2>
+        <canvas id="productSalesPieChart"></canvas>
+      </article>
+    </section>
   </main>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="/js/admin-dashboard-charts.js"></script>
 </body>
 </html>

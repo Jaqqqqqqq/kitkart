@@ -51,6 +51,7 @@
   </main>
 
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="/js/ui.js"></script>
   <script>
     $(function () {
       let paymentMethods = [];
@@ -115,10 +116,15 @@
           contentType: 'application/json',
           dataType: 'json',
           success: function (response) {
-            window.location.href = `/orders/${response.result.id}/confirmation`;
+            showPopup(response.message || 'Order placed successfully. Receipt email is being sent.', 'success');
+            setTimeout(function () {
+              window.location.href = `/orders/${response.result.id}/confirmation`;
+            }, 700);
           },
           error: function (xhr) {
-            $('#checkoutError').removeClass('hidden').text(xhr.responseJSON?.message || 'Checkout failed.');
+            const message = xhr.responseJSON?.message || 'Checkout failed.';
+            $('#checkoutError').removeClass('hidden').text(message);
+            showPopup(message, 'error');
           }
         });
       });

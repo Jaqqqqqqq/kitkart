@@ -8,6 +8,10 @@ $(function () {
     $message.toggleClass('is-error', Boolean(isError)).text(text || '');
   }
 
+  function isLoggedIn() {
+    return Boolean(sessionStorage.getItem('token') || localStorage.getItem('token'));
+  }
+
   function getVisibleCards() {
     return $(cardSelector).filter(function () {
       return !$(this).hasClass('is-filtered-out');
@@ -184,6 +188,11 @@ $(function () {
     const $form = $(this);
     const $message = $form.find('.cart-message');
 
+    if (!isLoggedIn()) {
+      showCartMessage($message, 'Please login to add items to cart.', true);
+      return;
+    }
+
     $.ajax({
       url: $form.attr('action'),
       method: 'POST',
@@ -191,13 +200,23 @@ $(function () {
       dataType: 'json',
       success: function (response) {
         showCartMessage($message, response.message || 'Added to cart.', false);
+        if (typeof showPopup === 'function') {
+          showPopup(response.message || 'Added to cart.', 'success');
+        }
       },
       error: function (xhr) {
         const response = xhr.responseJSON || {};
         showCartMessage($message, response.message || 'Unable to add item.', true);
+        if (typeof showPopup === 'function') {
+          showPopup(response.message || 'Unable to add item.', 'error');
+        }
       }
     });
   });
+
+  if (!isLoggedIn()) {
+    $('.add-to-cart-form button').prop('disabled', true).text('Login to add');
+  }
 
   setupInfiniteScrollObserver();
   filterProducts();

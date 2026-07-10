@@ -198,7 +198,6 @@ $(function () {
     ).done(function (salesResponse, itemsResponse, usersResponse) {
       const salesRows = salesResponse[0].rows || [];
       const itemRows = itemsResponse[0].rows || [];
-      const userRows = usersResponse[0].rows || [];
 
       data.yearlySales = data.yearlySales || {};
       data.revenueByMonth = {
@@ -209,13 +208,18 @@ $(function () {
         labels: itemRows.map((item) => item.items),
         values: itemRows.map((item) => item.total),
       };
-      data.userStatus = {
-        labels: userRows.map((item) => item.status),
-        values: userRows.map((item) => item.total),
-      };
 
       if (!hasData(data.yearlySales)) {
-        data.yearlySales = data.revenueByMonth;
+        const yearlyMap = salesRows.reduce((acc, row) => {
+          const year = String(new Date(row.month).getFullYear());
+          acc[year] = (acc[year] || 0) + Number(row.total || 0);
+          return acc;
+        }, {});
+        const years = Object.keys(yearlyMap).sort();
+        data.yearlySales = {
+          labels: years,
+          values: years.map((year) => yearlyMap[year]),
+        };
       }
     });
   }

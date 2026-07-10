@@ -67,10 +67,11 @@
           method: 'PUT',
           url: '/admin/orders/items/' + itemId + '/status',
           contentType: 'application/json',
+          dataType: 'json',
           data: JSON.stringify({ status }),
-          success: function () {
-            showPopup('Updated.', 'success');
-            location.reload();
+          success: function (response) {
+            showPopup(response.message || 'Updated successfully.', 'success');
+            setTimeout(function () { location.reload(); }, 800);
           },
           error: function (xhr) {
             showPopup(xhr.responseJSON?.message || 'Update failed.', 'error');
