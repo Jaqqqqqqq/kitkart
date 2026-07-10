@@ -1,6 +1,5 @@
 const express = require('express');
 const { getRedirectUrlForRole } = require('../controllers/authController');
-const { renderPage } = require('../services/viewService');
 
 const router = express.Router();
 
@@ -9,7 +8,14 @@ router.get('/', (req, res) => {
     return res.redirect(getRedirectUrlForRole(req.session.user.role));
   }
 
-  return renderPage(res, 'index', { title: 'Kitkart' });
+  return res.render('index', { title: 'Kitkart' }, (error, html) => {
+    if (error) {
+      console.error('Home render failed:', error);
+      return res.status(500).send(error.message);
+    }
+
+    return res.send(html);
+  });
 });
 
 module.exports = router;

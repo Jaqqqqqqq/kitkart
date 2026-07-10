@@ -1,6 +1,7 @@
 const { Category, Order, OrderItem, Product, ProductImage, User } = require('../config/sequelize');
 
 const ORDER_ITEM_STATUSES = ['Pending', 'Shipped', 'Delivered', 'Cancelled'];
+const LOCKED_ORDER_ITEM_STATUSES = ['Shipped', 'Delivered'];
 
 function normalizeProductInput(input, mainImage = null) {
   return {
@@ -241,8 +242,8 @@ async function updateOrderItemStatus(itemId, status) {
     throw error;
   }
 
-  if (status === 'Cancelled' && orderItem.status !== 'Pending') {
-    const error = new Error('Items can only be cancelled while they are still pending.');
+  if (LOCKED_ORDER_ITEM_STATUSES.includes(orderItem.status)) {
+    const error = new Error(`This item is already ${orderItem.status.toLowerCase()} and can no longer be changed.`);
     error.statusCode = 400;
     throw error;
   }
