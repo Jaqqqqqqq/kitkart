@@ -21,14 +21,10 @@ const apiRoutes = require('./routes/apiRoutes');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.engine('html', require('ejs').renderFile);
-app.set('view engine', 'html');
 const frontendPath = path.resolve(__dirname, '..', 'frontend');
 const frontendCssPath = path.resolve(frontendPath, 'css');
 const frontendJsPath = path.resolve(__dirname, '..', 'frontend', 'js');
 const frontendImagesPath = path.resolve(__dirname, '..', 'frontend', 'images');
-
-app.set('views', frontendPath);
 
 app.use('/css', express.static(frontendCssPath));
 app.use('/js', express.static(frontendJsPath));

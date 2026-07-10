@@ -25,6 +25,10 @@ function getOrderTotal(items) {
   return items.reduce((sum, item) => sum + item.subtotal, 0);
 }
 
+function canCancelOrder(items) {
+  return items.length > 0 && items.every((item) => item.status === 'Pending');
+}
+
 async function getCheckoutCart(userId) {
   const cart = await Cart.findOne({ where: { user_id: userId } });
 
@@ -138,7 +142,7 @@ async function createOrderFromCart(userId, paymentMethod) {
 async function getOrdersForUser(userId) {
   const orders = await Order.findAll({
     where: { user_id: userId },
-    include: [{ model: OrderItem, attributes: ['id', 'quantity', 'price'] }],
+    include: [{ model: OrderItem, attributes: ['id', 'quantity', 'price', 'status'] }],
     order: [
       ['created_at', 'DESC'],
       ['id', 'DESC'],
@@ -155,6 +159,7 @@ async function getOrdersForUser(userId) {
       created_at: plainOrder.created_at,
       total: items.reduce((sum, item) => sum + Number(item.quantity) * Number(item.price), 0),
       item_count: items.length,
+      can_cancel: canCancelOrder(items),
     };
   });
 }
@@ -202,11 +207,59 @@ async function getOrderForUser(userId, orderId) {
       review_id: reviewByProductId.get(Number(item.product_id)) || null,
     })),
     total: getOrderTotal(normalizedItems),
+    can_cancel: canCancelOrder(normalizedItems),
   };
+}
+
+async function cancelOrderForUser(userId, orderId) {
+  return sequelize.transaction(async (transaction) => {
+    const order = await Order.findOne({
+      where: { id: orderId, user_id: userId },
+      include: [
+        {
+          model: OrderItem,
+          include: [{ model: Product }],
+        },
+      ],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (!order) {
+      const error = new Error('Order not found.');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const plainOrder = order.get({ plain: true });
+    const items = plainOrder.OrderItems || [];
+
+    if (!canCancelOrder(items)) {
+      const error = new Error('Orders can only be cancelled while all items are still pending.');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    for (const item of items) {
+      await Product.increment('stock_quantity', {
+        by: Number(item.quantity),
+        where: { id: item.product_id },
+        transaction,
+      });
+    }
+
+    await OrderItem.update(
+      { status: 'Cancelled' },
+      { where: { order_id: orderId }, transaction }
+    );
+
+    return true;
+  });
 }
 
 module.exports = {
   PAYMENT_METHODS,
+  cancelOrderForUser,
   getCheckoutCart,
   createOrderFromCart,
   getOrdersForUser,
