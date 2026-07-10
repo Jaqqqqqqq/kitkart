@@ -1,3 +1,4 @@
+const path = require('path');
 const cartModel = require('../models/cartModel');
 
 function wantsJson(req) {
@@ -33,13 +34,7 @@ function handleCartError(req, res, error) {
 
 async function showCart(req, res) {
   try {
-    const cartData = await cartModel.getCartContents(req.session.user.id);
-
-    res.render('cart', {
-      title: 'My Cart',
-      items: cartData.items,
-      total: cartData.total,
-    });
+    res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'cart.html'));
   } catch (error) {
     console.error(error);
     res.status(500).send('Unable to load cart.');

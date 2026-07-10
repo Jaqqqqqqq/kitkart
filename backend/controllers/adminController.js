@@ -1,6 +1,7 @@
 const adminModel = require('../models/adminModel');
 const reviewModel = require('../models/reviewModel');
 const db = require('../models');
+const path = require('path');
 const { buildTransactionUpdateEmail, sendTransactionUpdateEmail } = require('../services/mailService');
 const { generateReceiptPdf } = require('../services/receiptService');
 const Category = db.Category;
@@ -28,12 +29,7 @@ function categoryFormDefaults(category = {}) {
 
 async function orders(req, res) {
   try {
-    const allOrders = await adminModel.getAllOrders();
-
-    return res.render('admin-orders', {
-      title: 'All Orders',
-      orders: allOrders,
-    });
+    return res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'admin-orders.html'));
   } catch (error) {
     console.error(error);
     return res.status(500).send('Unable to load orders.');
@@ -48,10 +44,7 @@ async function orderDetails(req, res) {
       return res.status(404).send('Order not found.');
     }
 
-    return res.render('admin-order-show', {
-      title: `Order #${order.id}`,
-      order,
-    });
+    return res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'admin-order-show.html'));
   } catch (error) {
     console.error(error);
     return res.status(500).send('Unable to load order details.');
@@ -60,12 +53,7 @@ async function orderDetails(req, res) {
 
 async function products(req, res) {
   try {
-    const allProducts = await adminModel.getProducts();
-
-    return res.render('admin-products', {
-      title: 'Manage Products',
-      products: allProducts,
-    });
+    return res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'admin-products.html'));
   } catch (error) {
     console.error(error);
     return res.status(500).send('Unable to load products.');
@@ -74,15 +62,7 @@ async function products(req, res) {
 
 async function newProduct(req, res) {
   try {
-    const categories = await adminModel.getCategories();
-
-    return res.render('admin-product-form', {
-      title: 'Add Product',
-      action: '/admin/products',
-      product: productFormDefaults(),
-      categories,
-      error: null,
-    });
+    return res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'admin-product-form.html'));
   } catch (error) {
     console.error(error);
     return res.status(500).send('Unable to load product form.');
@@ -100,13 +80,7 @@ async function editProduct(req, res) {
       return res.status(404).send('Product not found.');
     }
 
-    return res.render('admin-product-form', {
-      title: 'Edit Product',
-      action: `/admin/products/${product.id}`,
-      product: productFormDefaults(product),
-      categories,
-      error: null,
-    });
+    return res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'admin-product-form.html'));
   } catch (error) {
     console.error(error);
     return res.status(500).send('Unable to load product form.');
@@ -115,12 +89,7 @@ async function editProduct(req, res) {
 
 async function categories(req, res) {
   try {
-    const allCategories = await adminModel.getCategories();
-
-    return res.render('admin-categories', {
-      title: 'Manage Categories',
-      categories: allCategories,
-    });
+    return res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'admin-categories.html'));
   } catch (error) {
     console.error(error);
     return res.status(500).send('Unable to load categories.');
@@ -128,12 +97,7 @@ async function categories(req, res) {
 }
 
 function renderCategoryForm(res, title, action, category, error = null, statusCode = 200) {
-  return res.status(statusCode).render('admin-category-form', {
-    title,
-    action,
-    category: categoryFormDefaults(category),
-    error,
-  });
+  return res.status(statusCode).sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'admin-category-form.html'));
 }
 
 function newCategory(req, res) {
@@ -157,12 +121,7 @@ async function editCategory(req, res) {
 
 async function users(req, res) {
   try {
-    const allUsers = await adminModel.getUsers();
-
-    return res.render('admin-users', {
-      title: 'User Accounts',
-      users: allUsers,
-    });
+    return res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'admin-users.html'));
   } catch (error) {
     console.error(error);
     return res.status(500).send('Unable to load user accounts.');
@@ -171,12 +130,7 @@ async function users(req, res) {
 
 async function reviews(req, res) {
   try {
-    const allReviews = await reviewModel.getReviewsForAdmin();
-
-    return res.render('admin-reviews', {
-      title: 'Customer Reviews',
-      reviews: allReviews,
-    });
+    return res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'admin-reviews.html'));
   } catch (error) {
     console.error(error);
     return res.status(500).send('Unable to load reviews.');

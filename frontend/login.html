@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %></title>
+  <title>Login</title>
   <link rel="stylesheet" href="/css/catalog.css">
 </head>
 <body class="auth-page">
@@ -14,14 +14,12 @@
       <p class="meta-copy">Access your cart, orders, and the catalog in one place.</p>
     </div>
 
-    <% if (error) { %>
-      <p class="form-error"><%= error %></p>
-    <% } %>
+    <p id="loginError" class="form-error hidden"></p>
 
     <form action="/auth/login" method="POST" id="loginForm" class="auth-form" novalidate>
       <div class="form-field">
         <label for="email">Email</label>
-        <input id="email" name="email" type="email" value="<%= oldInput.email || '' %>" required>
+        <input id="email" name="email" type="email" required>
         <p class="field-help"></p>
       </div>
 

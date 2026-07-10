@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %></title>
+  <title>Dashboard</title>
   <link rel="stylesheet" href="/css/catalog.css">
 </head>
 <body class="dashboard-page">
@@ -12,9 +12,8 @@
       <div>
         <p class="eyebrow">Admin</p>
         <h1>Store control panel</h1>
-        <p class="meta-copy">Welcome, <%= currentUser.first_name %>. Manage products, orders, users, and school supply reporting.</p>
+        <p class="meta-copy">Manage products, orders, users, and school supply reporting.</p>
       </div>
-
       <form action="/auth/logout" method="POST">
         <button type="submit" class="danger-button">Logout</button>
       </form>

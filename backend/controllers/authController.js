@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const path = require('path');
 
 const { User } = require('../config/sequelize');
 const userModel = require('../models/userModel');
@@ -27,20 +28,15 @@ function getJwtSecret() {
 }
 
 function getLogin(req, res) {
-  res.render('login', { title: 'Login', error: null, oldInput: {} });
+  res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'login.html'));
 }
 
 function getRegister(req, res) {
-  res.render('register', { title: 'Register', error: null, oldInput: {} });
+  res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'register.html'));
 }
 
 function getForgotPassword(req, res) {
-  res.render('forgot-password', {
-    title: 'Forgot Password',
-    error: null,
-    success: null,
-    oldInput: {},
-  });
+  res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'forgot-password.html'));
 }
 
 async function postForgotPassword(req, res) {
@@ -51,19 +47,9 @@ async function postForgotPassword(req, res) {
       req.body.confirm_password
     );
 
-    return res.render('forgot-password', {
-      title: 'Forgot Password',
-      error: null,
-      success: 'Password changed. You can now login.',
-      oldInput: {},
-    });
+    return res.status(200).send('Password changed. You can now login.');
   } catch (error) {
-    return res.status(error.statusCode || 500).render('forgot-password', {
-      title: 'Forgot Password',
-      error: error.message || 'Unable to change password.',
-      success: null,
-      oldInput: req.body,
-    });
+    return res.status(error.statusCode || 500).send(error.message || 'Unable to change password.');
   }
 }
 
@@ -75,11 +61,7 @@ async function postRegister(req, res) {
       return res.status(400).json({ success: false, message: 'Please fill in all required fields.' });
     }
 
-    return res.status(400).render('register', {
-      title: 'Register',
-      error: 'Please fill in all required fields.',
-      oldInput: req.body,
-    });
+    return res.status(400).send('Please fill in all required fields.');
   }
 
   if (password !== confirm_password) {
@@ -87,11 +69,7 @@ async function postRegister(req, res) {
       return res.status(400).json({ success: false, message: 'Passwords do not match.' });
     }
 
-    return res.status(400).render('register', {
-      title: 'Register',
-      error: 'Passwords do not match.',
-      oldInput: req.body,
-    });
+    return res.status(400).send('Passwords do not match.');
   }
 
   try {
@@ -105,11 +83,7 @@ async function postRegister(req, res) {
         });
       }
 
-      return res.status(409).render('register', {
-        title: 'Register',
-        error: 'An account with this email already exists.',
-        oldInput: req.body,
-      });
+      return res.status(409).send('An account with this email already exists.');
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
@@ -150,11 +124,7 @@ async function postRegister(req, res) {
       return res.status(500).json({ success: false, message: 'Registration failed. Please try again.' });
     }
 
-    return res.status(500).render('register', {
-      title: 'Register',
-      error: 'Registration failed. Please try again.',
-      oldInput: req.body,
-    });
+    return res.status(500).send('Registration failed. Please try again.');
   }
 }
 
@@ -166,11 +136,7 @@ async function postLogin(req, res) {
       return res.status(400).json({ success: false, message: 'Please enter your email and password.' });
     }
 
-    return res.status(400).render('login', {
-      title: 'Login',
-      error: 'Please enter your email and password.',
-      oldInput: req.body,
-    });
+    return res.status(400).send('Please enter your email and password.');
   }
 
   try {
@@ -181,11 +147,7 @@ async function postLogin(req, res) {
         return res.status(401).json({ success: false, message: 'Invalid email or password.' });
       }
 
-      return res.status(401).render('login', {
-        title: 'Login',
-        error: 'Invalid email or password.',
-        oldInput: req.body,
-      });
+      return res.status(401).send('Invalid email or password.');
     }
 
     if (user.status !== 'active') {
@@ -193,11 +155,7 @@ async function postLogin(req, res) {
         return res.status(403).json({ success: false, message: 'This account is inactive.' });
       }
 
-      return res.status(403).render('login', {
-        title: 'Login',
-        error: 'This account is inactive.',
-        oldInput: req.body,
-      });
+      return res.status(403).send('This account is inactive.');
     }
 
     const storedPassword = user.password;
@@ -218,11 +176,7 @@ async function postLogin(req, res) {
         return res.status(401).json({ success: false, message: 'Invalid email or password.' });
       }
 
-      return res.status(401).render('login', {
-        title: 'Login',
-        error: 'Invalid email or password.',
-        oldInput: req.body,
-      });
+      return res.status(401).send('Invalid email or password.');
     }
 
     const role = String(user.role || '').trim().toLowerCase();
@@ -251,11 +205,7 @@ async function postLogin(req, res) {
       return res.status(500).json({ success: false, message: 'Login failed. Please try again.' });
     }
 
-    return res.status(500).render('login', {
-      title: 'Login',
-      error: 'Login failed. Please try again.',
-      oldInput: req.body,
-    });
+    return res.status(500).send('Login failed. Please try again.');
   }
 }
 

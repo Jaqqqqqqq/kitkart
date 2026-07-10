@@ -1,4 +1,5 @@
 const adminModel = require('../models/adminModel');
+const path = require('path');
 
 function toMonthKey(value) {
   const date = new Date(value);
@@ -90,21 +91,14 @@ async function getChartData() {
 }
 
 function dashboard(req, res) {
-  return res.render('admin-dashboard', {
-    title: 'Dashboard',
-    currentUser: req.session.user,
-  });
+  return res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'admin-dashboard.html'));
 }
 
 async function charts(req, res) {
   try {
     const chartData = await getChartData();
 
-    return res.render('admin-charts', {
-      title: 'Charts',
-      currentUser: req.session.user,
-      chartData,
-    });
+    return res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'admin-charts.html'));
   } catch (error) {
     console.error(error);
     return res.status(500).send('Unable to load charts.');

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %></title>
+  <title>My Cart</title>
   <link rel="stylesheet" href="/css/catalog.css">
 </head>
 <body>
@@ -24,56 +24,31 @@
     </header>
 
     <section class="cart-panel">
-      <% if (items.length === 0) { %>
-        <p class="empty-message is-visible">Your cart is empty.</p>
-      <% } else { %>
-        <div class="cart-table-wrap">
-          <table class="cart-table">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Price</th>
-                <th>Stock</th>
-                <th>Quantity</th>
-                <th>Subtotal</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody id="cartItems">
-              <% items.forEach((item) => { %>
-                <tr
-                  data-item-id="<%= item.cart_item_id %>"
-                  data-price="<%= item.price %>"
-                  data-stock="<%= item.stock_quantity || 0 %>"
-                >
-                  <td><%= item.product_name %></td>
-                  <td>PHP <span class="item-price"><%= item.price.toFixed(2) %></span></td>
-                  <td><%= item.stock_quantity || 0 %></td>
-                  <td>
-                    <div class="quantity-controls">
-                      <button type="button" class="cart-action" data-action="decrease">-</button>
-                      <span class="item-quantity"><%= item.quantity %></span>
-                      <button type="button" class="cart-action" data-action="increase">+</button>
-                    </div>
-                  </td>
-                  <td>PHP <span class="item-subtotal"><%= item.subtotal.toFixed(2) %></span></td>
-                  <td>
-                    <button type="button" class="cart-action remove-button" data-action="remove">Remove</button>
-                  </td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
-        </div>
+      <p id="cartEmpty" class="empty-message is-visible hidden">Your cart is empty.</p>
 
-        <div class="cart-summary">
-          <p id="cartMessage" aria-live="polite"></p>
-          <div>
-            <p>Total: PHP <strong id="cartTotal"><%= total.toFixed(2) %></strong></p>
-            <a class="button-link" href="/checkout">Checkout</a>
-          </div>
+      <div id="cartWrap" class="cart-table-wrap hidden">
+        <table class="cart-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Price</th>
+              <th>Stock</th>
+              <th>Quantity</th>
+              <th>Subtotal</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="cartItems"></tbody>
+        </table>
+      </div>
+
+      <div class="cart-summary">
+        <p id="cartMessage" aria-live="polite"></p>
+        <div>
+          <p>Total: PHP <strong id="cartTotal">0.00</strong></p>
+          <a class="button-link" href="/checkout">Checkout</a>
         </div>
-      <% } %>
+      </div>
     </section>
   </main>
 
@@ -84,60 +59,86 @@
         return Number(value).toFixed(2);
       }
 
-      function renderCart(response) {
-        const itemsById = {};
-
-        response.items.forEach(function (item) {
-          itemsById[item.cart_item_id] = item;
-        });
-
-        $('#cartItems tr').each(function () {
-          const $row = $(this);
-          const itemId = Number($row.data('item-id'));
-          const item = itemsById[itemId];
-
-          if (!item) {
-            $row.remove();
-            return;
-          }
-
-          $row.find('.item-quantity').text(item.quantity);
-          $row.find('.item-subtotal').text(money(item.subtotal));
-        });
-
-        $('#cartTotal').text(money(response.total));
-
-        if (response.items.length === 0) {
-          $('.cart-panel').html('<p class="empty-message is-visible">Your cart is empty.</p>');
-        }
+      function renderEmpty() {
+        $('#cartWrap').addClass('hidden');
+        $('#cartEmpty').removeClass('hidden');
       }
 
-      $('.cart-table').on('click', '.cart-action', function () {
+      function renderCart(items, total) {
+        const $body = $('#cartItems');
+        $body.empty();
+
+        if (!items.length) {
+          renderEmpty();
+          $('#cartTotal').text('0.00');
+          return;
+        }
+
+        $('#cartWrap').removeClass('hidden');
+        $('#cartEmpty').addClass('hidden');
+
+        items.forEach(function (item) {
+          $body.append(`
+            <tr data-item-id="${item.cart_item_id}">
+              <td>${item.product_name}</td>
+              <td>PHP <span class="item-price">${money(item.price)}</span></td>
+              <td>${item.stock_quantity || 0}</td>
+              <td>
+                <div class="quantity-controls">
+                  <button type="button" class="cart-action" data-action="decrease">-</button>
+                  <span class="item-quantity">${item.quantity}</span>
+                  <button type="button" class="cart-action" data-action="increase">+</button>
+                </div>
+              </td>
+              <td>PHP <span class="item-subtotal">${money(item.subtotal)}</span></td>
+              <td><button type="button" class="cart-action remove-button" data-action="remove">Remove</button></td>
+            </tr>
+          `);
+        });
+
+        $('#cartTotal').text(money(total));
+      }
+
+      function loadCart() {
+        $.ajax({
+          url: '/api/v1/cart',
+          method: 'GET',
+          dataType: 'json',
+          success: function (response) {
+            renderCart(response.result.items || [], response.result.total || 0);
+          },
+          error: function (xhr) {
+            $('#cartMessage').addClass('is-error').text(xhr.responseJSON?.message || 'Unable to load cart.');
+          }
+        });
+      }
+
+      $('#cartItems').on('click', '.cart-action', function () {
         const $button = $(this);
         const $row = $button.closest('tr');
         const itemId = $row.data('item-id');
         const action = $button.data('action');
-        const $message = $('#cartMessage');
-
-        $button.prop('disabled', true);
-        $message.removeClass('is-error').text('');
+        const methodMap = { increase: 'PUT', decrease: 'PUT', remove: 'DELETE' };
+        const urlMap = {
+          increase: `/api/v1/cart/${itemId}/increase`,
+          decrease: `/api/v1/cart/${itemId}/decrease`,
+          remove: `/api/v1/cart/${itemId}`
+        };
 
         $.ajax({
-          url: `/cart/items/${itemId}/${action}`,
-          method: 'POST',
+          url: urlMap[action],
+          method: methodMap[action],
           dataType: 'json',
-          success: function (response) {
-            renderCart(response);
+          success: function () {
+            loadCart();
           },
           error: function (xhr) {
-            const response = xhr.responseJSON || {};
-            $message.addClass('is-error').text(response.message || 'Unable to update cart.');
-          },
-          complete: function () {
-            $button.prop('disabled', false);
+            $('#cartMessage').addClass('is-error').text(xhr.responseJSON?.message || 'Unable to update cart.');
           }
         });
       });
+
+      loadCart();
     });
   </script>
 </body>

@@ -1,22 +1,14 @@
 const productModel = require('../models/productModel');
 const reviewModel = require('../models/reviewModel');
 const db = require('../models');
+const path = require('path');
 const Category = db.Category;
 const Product = db.Product;
 const ProductImage = db.ProductImage;
 
 async function index(req, res) {
   try {
-    const [products, categories] = await Promise.all([
-      productModel.getAllProducts(),
-      productModel.getAllCategories(),
-    ]);
-
-    res.render('products', {
-      title: 'School Supplies Catalog',
-      products,
-      categories,
-    });
+    res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'products.html'));
   } catch (error) {
     console.error(error);
     res.status(500).send('Unable to load products.');
@@ -31,19 +23,7 @@ async function show(req, res) {
       return res.status(404).send('Product not found.');
     }
 
-    const [reviews, ratingSummary, reviewEligibility] = await Promise.all([
-      reviewModel.getReviewsForProduct(req.params.id),
-      reviewModel.getRatingSummary(req.params.id),
-      reviewModel.canUserReviewProduct(req.session.user.id, req.params.id),
-    ]);
-
-    return res.render('product-show', {
-      title: product.product_name,
-      product,
-      reviews,
-      ratingSummary,
-      reviewEligibility,
-    });
+    return res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'product-show.html'));
   } catch (error) {
     console.error(error);
     return res.status(500).send('Unable to load product details.');

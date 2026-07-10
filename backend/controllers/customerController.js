@@ -1,25 +1,16 @@
-function home(req, res) {
-  res.render('home', {
-    title: 'Home',
-    currentUser: req.session.user,
-  });
-}
-
+const path = require('path');
 const customerModel = require('../models/userModel');
+
+function home(req, res) {
+  res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'home.html'));
+}
 
 async function getCurrentUser(req) {
     return customerModel.getUserById(req.session.user.id);
 }
 
 async function profile(req, res) {
-    const currentUser = await getCurrentUser(req);
-
-    res.render("profile", {
-        title: "Profile",
-        currentUser,
-        error: null,
-        success: req.query.updated ? "Profile updated." : null
-    });
+    return res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'profile.html'));
 }
 
 async function editProfile(req, res) {
@@ -48,26 +39,14 @@ async function updateProfile(req, res) {
 
         console.log(err);
 
-        res.status(err.statusCode || 500).render("profile", {
-            title: "Profile",
-            currentUser: {
-                ...req.session.user,
-                ...req.body
-            },
-            error: err.message || "Unable to update profile.",
-            success: null
-        });
+        res.status(err.statusCode || 500).send(err.message || "Unable to update profile.");
 
     }
 
 }
 
 function changePasswordPage(req, res) {
-    res.render("change-password", {
-        title: "Change Password",
-        error: null,
-        success: null
-    });
+    res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'change-password.html'));
 }
 
 async function updatePassword(req, res) {
@@ -78,19 +57,11 @@ async function updatePassword(req, res) {
             req.body.confirm_password
         );
 
-        return res.render("change-password", {
-            title: "Change Password",
-            error: null,
-            success: "Password changed successfully."
-        });
+        return res.status(200).send("Password changed successfully.");
     } catch (err) {
         console.log(err);
 
-        return res.status(err.statusCode || 500).render("change-password", {
-            title: "Change Password",
-            error: err.message || "Unable to change password.",
-            success: null
-        });
+        return res.status(err.statusCode || 500).send(err.message || "Unable to change password.");
     }
 }
 

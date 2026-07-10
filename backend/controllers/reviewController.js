@@ -1,4 +1,5 @@
 const reviewModel = require('../models/reviewModel');
+const path = require('path');
 
 function renderError(res, statusCode, message) {
   return res.status(statusCode).send(message);
@@ -33,11 +34,7 @@ async function edit(req, res) {
       return res.status(404).send('Review not found.');
     }
 
-    return res.render('review-edit', {
-      title: 'Edit Review',
-      review,
-      error: null,
-    });
+    return res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'review-edit.html'));
   } catch (error) {
     console.error(error);
     return res.status(500).send('Unable to load review.');
@@ -68,15 +65,7 @@ async function update(req, res) {
       return res.status(statusCode).send(error.message);
     }
 
-    return res.status(statusCode).render('review-edit', {
-      title: 'Edit Review',
-      review: {
-        ...review,
-        rating: req.body.rating,
-        review_text: req.body.review_text,
-      },
-      error: error.message,
-    });
+    return res.status(statusCode).send(error.message);
   }
 }
 

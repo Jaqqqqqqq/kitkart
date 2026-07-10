@@ -3,63 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %></title>
+  <title>User Accounts</title>
   <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.min.css">
   <link rel="stylesheet" href="/css/catalog.css">
-  <style>
-    .user-action-form { display: inline; }
-    .user-action-btn {
-      min-height: 42px;
-      padding: 9px 14px;
-      border: none;
-      border-radius: 999px;
-      cursor: pointer;
-      font-weight: 600;
-    }
-    .user-action-btn.role-btn { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; }
-    .user-action-btn.role-btn:hover { background: linear-gradient(135deg, #1d4ed8, #1e40af); }
-    .user-action-btn.activate-btn { background: linear-gradient(135deg, #16a34a, #15803d); color: #fff; }
-    .user-action-btn.activate-btn:hover { background: linear-gradient(135deg, #15803d, #166534); }
-    .user-action-btn.deactivate-btn { background: linear-gradient(135deg, #dc2626, #b91c1c); color: #fff; }
-    .user-action-btn.deactivate-btn:hover { background: linear-gradient(135deg, #b91c1c, #991b1b); }
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 78px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      font-size: 0.8rem;
-      font-weight: 600;
-    }
-    .status-badge.active { background: #dcfce7; color: #15803d; }
-    .status-badge.inactive { background: #fee2e2; color: #b91c1c; }
-    .role-select {
-      min-height: 42px;
-      padding: 8px 10px;
-      border: 1px solid #d1d5db;
-      border-radius: 12px;
-      font-size: 0.9rem;
-      margin-right: 4px;
-      background: #fff;
-    }
-    .actions-cell { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .msg-toast {
-      position: fixed; top: 20px; left: 50%;
-      transform: translateX(-50%);
-      max-width: min(400px, calc(100% - 32px));
-      padding: 10px 18px; border-radius: 6px;
-      font-size: 0.9rem; font-weight: 600;
-      text-align: center;
-      display: none; z-index: 999;
-    }
-    .msg-toast.success { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
-    .msg-toast.error   { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
-  </style>
 </head>
 <body>
-  <div id="toast" class="msg-toast"></div>
-
   <main class="page">
     <header class="catalog-header">
       <div>
@@ -69,141 +17,124 @@
         <p class="meta-copy">Update roles and account access without leaving the table.</p>
       </div>
     </header>
-
     <section class="cart-panel">
-      <% if (users.length === 0) { %>
-        <p class="empty-message is-visible">No users found.</p>
-      <% } else { %>
-        <div class="cart-table-wrap">
-          <table id="usersTable" class="cart-table display">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Phone</th>
-                <th>Address</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% users.forEach((user) => { %>
-                <tr id="user-row-<%= user.id %>">
-                  <td><%= user.first_name %> <%= user.last_name %></td>
-                  <td><%= user.email %></td>
-                  <td id="role-cell-<%= user.id %>"><%= user.role %></td>
-                  <td>
-                    <span id="status-badge-<%= user.id %>" class="status-badge <%= user.status %>">
-                      <%= user.status %>
-                    </span>
-                  </td>
-                  <td><%= user.phone || '-' %></td>
-                  <td><%= user.address || '-' %></td>
-                  <td>
-                    <div class="actions-cell">
-                      <!-- Role update -->
-                      <select id="role-select-<%= user.id %>" class="role-select">
-                        <option value="customer" <%= user.role === 'customer' ? 'selected' : '' %>>Customer</option>
-                        <option value="admin" <%= user.role === 'admin' ? 'selected' : '' %>>Admin</option>
-                      </select>
-                      <button
-                        class="user-action-btn role-btn"
-                        onclick="updateRole(<%= user.id %>)">
-                        Update Role
-                      </button>
-
-                      <!-- Activate / Deactivate -->
-                      <% if (user.status === 'active') { %>
-                        <button
-                          id="status-btn-<%= user.id %>"
-                          class="user-action-btn deactivate-btn"
-                          onclick="updateStatus(<%= user.id %>, 'inactive')">
-                          Deactivate
-                        </button>
-                      <% } else { %>
-                        <button
-                          id="status-btn-<%= user.id %>"
-                          class="user-action-btn activate-btn"
-                          onclick="updateStatus(<%= user.id %>, 'active')">
-                          Activate
-                        </button>
-                      <% } %>
-                    </div>
-                  </td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
-        </div>
-      <% } %>
+      <div class="cart-table-wrap">
+        <table id="usersTable" class="cart-table display">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Phone</th>
+              <th>Address</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="usersBody"></tbody>
+        </table>
+      </div>
     </section>
   </main>
-
-  <script>
-    function showToast(message, type) {
-      const toast = document.getElementById('toast');
-      toast.textContent = message;
-      toast.className = 'msg-toast ' + type;
-      toast.style.display = 'block';
-      setTimeout(() => { toast.style.display = 'none'; }, 3000);
-    }
-
-    async function updateRole(userId) {
-      const role = document.getElementById('role-select-' + userId).value;
-      try {
-        const res = await fetch('/admin/users/' + userId + '/role', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({ role }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          document.getElementById('role-cell-' + userId).textContent = role;
-          showToast('Role updated to ' + role + '.', 'success');
-        } else {
-          showToast(data.message || 'Failed to update role.', 'error');
-        }
-      } catch (e) {
-        showToast('Request failed.', 'error');
-      }
-    }
-
-    async function updateStatus(userId, newStatus) {
-      try {
-        const res = await fetch('/admin/users/' + userId + '/status', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({ status: newStatus }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          const badge = document.getElementById('status-badge-' + userId);
-          badge.textContent = newStatus;
-          badge.className = 'status-badge ' + newStatus;
-
-          const btn = document.getElementById('status-btn-' + userId);
-          if (newStatus === 'inactive') {
-            btn.textContent = 'Activate';
-            btn.className = 'user-action-btn activate-btn';
-            btn.onclick = function() { updateStatus(userId, 'active'); };
-          } else {
-            btn.textContent = 'Deactivate';
-            btn.className = 'user-action-btn deactivate-btn';
-            btn.onclick = function() { updateStatus(userId, 'inactive'); };
-          }
-
-          showToast('Account ' + newStatus + '.', 'success');
-        } else {
-          showToast(data.message || 'Failed to update status.', 'error');
-        }
-      } catch (e) {
-        showToast('Request failed.', 'error');
-      }
-    }
-  </script>
+  <div id="toast" class="msg-toast"></div>
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
-  <script src="/js/admin-crud.js"></script>
+  <script>
+    $(function () {
+      function showToast(message, type) {
+        $('#toast').text(message).attr('class', 'msg-toast ' + type).show();
+        setTimeout(function () { $('#toast').hide(); }, 2500);
+      }
+
+      function loadUsers() {
+        $.get('/api/v1/users', function (response) {
+          const users = response.rows || [];
+          const $body = $('#usersBody');
+          $body.empty();
+
+          users.forEach(function (user) {
+            $body.append(`
+              <tr id="user-row-${user.id}">
+                <td>${user.first_name} ${user.last_name}</td>
+                <td>${user.email}</td>
+                <td id="role-cell-${user.id}">${user.role}</td>
+                <td><span id="status-badge-${user.id}" class="status-badge ${user.status}">${user.status}</span></td>
+                <td>${user.phone || '-'}</td>
+                <td>${user.address || '-'}</td>
+                <td>
+                  <select id="role-select-${user.id}" class="role-select">
+                    <option value="customer" ${user.role === 'customer' ? 'selected' : ''}>Customer</option>
+                    <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                  </select>
+                  <button type="button" class="user-action-btn role-btn" onclick="updateRole(${user.id})">Update Role</button>
+                  <button type="button" id="status-btn-${user.id}" class="user-action-btn ${user.status === 'active' ? 'deactivate-btn' : 'activate-btn'}" onclick="updateStatus(${user.id}, '${user.status === 'active' ? 'inactive' : 'active'}')">
+                    ${user.status === 'active' ? 'Deactivate' : 'Activate'}
+                  </button>
+                </td>
+              </tr>
+            `);
+          });
+
+          $('#usersTable').DataTable({
+            pageLength: 10,
+            lengthChange: false,
+            order: [[0, 'asc']]
+          });
+        });
+      }
+
+      window.updateRole = function (userId) {
+        const role = $('#role-select-' + userId).val();
+        $.ajax({
+          url: '/admin/users/' + userId + '/role',
+          method: 'POST',
+          contentType: 'application/json',
+          dataType: 'json',
+          data: JSON.stringify({ role }),
+          success: function (data) {
+            if (data.success) {
+              $('#role-cell-' + userId).text(role);
+              showToast('Role updated to ' + role + '.', 'success');
+            } else {
+              showToast(data.message || 'Failed to update role.', 'error');
+            }
+          },
+          error: function (xhr) {
+            showToast(xhr.responseJSON?.message || 'Request failed.', 'error');
+          }
+        });
+      };
+
+      window.updateStatus = function (userId, newStatus) {
+        $.ajax({
+          url: '/admin/users/' + userId + '/status',
+          method: 'POST',
+          contentType: 'application/json',
+          dataType: 'json',
+          data: JSON.stringify({ status: newStatus }),
+          success: function (data) {
+            if (data.success) {
+              const badge = $('#status-badge-' + userId);
+              badge.text(newStatus).attr('class', 'status-badge ' + newStatus);
+              const btn = $('#status-btn-' + userId);
+              if (newStatus === 'inactive') {
+                btn.text('Activate').removeClass('deactivate-btn').addClass('activate-btn').off('click').on('click', function () { updateStatus(userId, 'active'); });
+              } else {
+                btn.text('Deactivate').removeClass('activate-btn').addClass('deactivate-btn').off('click').on('click', function () { updateStatus(userId, 'inactive'); });
+              }
+              showToast('Account ' + newStatus + '.', 'success');
+            } else {
+              showToast(data.message || 'Failed to update status.', 'error');
+            }
+          },
+          error: function (xhr) {
+            showToast(xhr.responseJSON?.message || 'Request failed.', 'error');
+          }
+        });
+      };
+
+      loadUsers();
+    });
+  </script>
 </body>
 </html>

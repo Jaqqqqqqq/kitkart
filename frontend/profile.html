@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %></title>
+  <title>Profile</title>
   <link rel="stylesheet" href="/css/catalog.css">
 </head>
 <body class="auth-page">
@@ -15,7 +15,6 @@
         <h1>Your profile</h1>
         <p class="meta-copy">Edit your account details for smoother checkout and order updates.</p>
       </div>
-
       <form action="/auth/logout" method="POST">
         <button type="submit" class="danger-button">Logout</button>
       </form>
@@ -26,45 +25,63 @@
       <span class="pill blue">Checkout info</span>
     </div>
 
-    <% if (error) { %>
-      <p class="form-error"><%= error %></p>
-    <% } %>
+    <p id="profileMessage" class="hidden"></p>
 
-    <% if (success) { %>
-      <p class="info-alert"><%= success %></p>
-    <% } %>
-
-    <form action="/profile" method="POST" class="auth-form">
+    <form id="profileForm" action="/profile" method="POST" class="auth-form">
       <div class="form-field">
         <label for="first_name">First Name</label>
-        <input id="first_name" type="text" name="first_name" value="<%= currentUser.first_name %>" required>
+        <input id="first_name" type="text" name="first_name" required>
       </div>
-
       <div class="form-field">
         <label for="last_name">Last Name</label>
-        <input id="last_name" type="text" name="last_name" value="<%= currentUser.last_name %>" required>
+        <input id="last_name" type="text" name="last_name" required>
       </div>
-
       <div class="form-field">
         <label for="email">Email</label>
-        <input id="email" type="email" name="email" value="<%= currentUser.email %>" required>
+        <input id="email" type="email" name="email" required>
       </div>
-
       <div class="form-field">
         <label for="phone">Phone</label>
-        <input id="phone" type="text" name="phone" value="<%= currentUser.phone || '' %>">
+        <input id="phone" type="text" name="phone">
       </div>
-
       <div class="form-field">
         <label for="address">Address</label>
-        <textarea id="address" name="address" rows="3"><%= currentUser.address || '' %></textarea>
+        <textarea id="address" name="address" rows="3"></textarea>
       </div>
-
       <div class="hero-actions">
         <button type="submit">Save Changes</button>
         <a href="/profile/password" class="button-link">Change Password</a>
       </div>
     </form>
   </main>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script>
+    $(function () {
+      $.get('/api/v1/users', function (response) {
+        const user = response.rows.find((item) => String(item.id) === String(sessionStorage.getItem('userId') || ''));
+        if (!user) return;
+        $('#first_name').val(user.first_name || '');
+        $('#last_name').val(user.last_name || '');
+        $('#email').val(user.email || '');
+        $('#phone').val(user.phone || '');
+        $('#address').val(user.address || '');
+      });
+
+      $('#profileForm').on('submit', function (event) {
+        event.preventDefault();
+        $.ajax({
+          url: '/profile/edit',
+          method: 'POST',
+          data: $(this).serialize(),
+          success: function () {
+            $('#profileMessage').removeClass('hidden').text('Profile updated.');
+          },
+          error: function (xhr) {
+            $('#profileMessage').removeClass('hidden').text(xhr.responseText || 'Unable to update profile.');
+          }
+        });
+      });
+    });
+  </script>
 </body>
 </html>

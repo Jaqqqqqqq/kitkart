@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %></title>
+  <title>Order History</title>
   <link rel="stylesheet" href="/css/catalog.css">
 </head>
 <body>
@@ -19,35 +19,64 @@
 
     <section class="cart-panel">
       <p class="table-note">Order details open on a separate page for a cleaner review flow.</p>
-      <% if (orders.length === 0) { %>
-        <p class="empty-message is-visible">No orders yet.</p>
-      <% } else { %>
-        <div class="cart-table-wrap">
-          <table class="cart-table">
-            <thead>
-              <tr>
-                <th>Order</th>
-                <th>Payment</th>
-                <th>Items</th>
-                <th>Total</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% orders.forEach((order) => { %>
-                <tr>
-                  <td>#<%= order.id %></td>
-                  <td><%= order.payment_method %></td>
-                  <td><%= order.item_count %></td>
-                  <td>PHP <%= order.total.toFixed(2) %></td>
-                  <td><a href="/orders/<%= order.id %>">View</a></td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
-        </div>
-      <% } %>
+      <p id="historyEmpty" class="empty-message is-visible hidden">No orders yet.</p>
+      <div id="historyWrap" class="cart-table-wrap hidden">
+        <table class="cart-table">
+          <thead>
+            <tr>
+              <th>Order</th>
+              <th>Payment</th>
+              <th>Items</th>
+              <th>Total</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
     </section>
   </main>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script>
+    $(function () {
+      function money(value) {
+        return Number(value).toFixed(2);
+      }
+
+      $.ajax({
+        url: '/api/v1/orders',
+        method: 'GET',
+        dataType: 'json',
+        success: function (response) {
+          const orders = response.rows || [];
+
+          if (!orders.length) {
+            $('#historyEmpty').removeClass('hidden');
+            return;
+          }
+
+          $('#historyWrap').removeClass('hidden');
+          const $body = $('#historyBody');
+          $body.empty();
+
+          orders.forEach(function (order) {
+            $body.append(`
+              <tr>
+                <td>#${order.id}</td>
+                <td>${order.payment_method}</td>
+                <td>${order.item_count}</td>
+                <td>PHP ${money(order.total)}</td>
+                <td><a href="/orders/${order.id}">View</a></td>
+              </tr>
+            `);
+          });
+        },
+        error: function (xhr) {
+          $('#historyEmpty').removeClass('hidden').text(xhr.responseJSON?.message || 'Unable to load order history.');
+        }
+      });
+    });
+  </script>
 </body>
 </html>

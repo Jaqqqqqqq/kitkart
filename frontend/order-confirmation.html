@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %></title>
+  <title>Order Confirmed</title>
   <link rel="stylesheet" href="/css/catalog.css">
 </head>
 <body>
@@ -12,18 +12,34 @@
       <div>
         <a href="/shop" class="back-link">Continue shopping</a>
         <h1>Order Confirmed</h1>
-        <p>Your order #<%= order.id %> has been placed.</p>
+        <p id="orderNote">Your order has been placed.</p>
       </div>
     </header>
-
     <section class="cart-panel">
-      <p>Payment: <strong><%= order.payment_method %></strong></p>
-      <p>Total: PHP <strong><%= order.total.toFixed(2) %></strong></p>
+      <p id="confirmationText">Loading order...</p>
       <p>
-        <a href="/orders/<%= order.id %>">View order details</a>
-        <a href="/orders">Order history</a>
+        <a href="/orders" class="button-link">Order history</a>
       </p>
     </section>
   </main>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script>
+    $(function () {
+      const pathParts = window.location.pathname.split('/');
+      const orderId = pathParts[2];
+      $.get('/api/v1/orders/' + orderId, function (response) {
+        if (response.result) {
+          $('#orderNote').text('Your order #' + response.result.id + ' has been placed.');
+          $('#confirmationText').html(
+            'Payment: <strong>' + response.result.payment_method + '</strong><br>' +
+            'Total: PHP <strong>' + Number(response.result.total).toFixed(2) + '</strong><br>' +
+            '<a href="/orders/' + response.result.id + '">View order details</a>'
+          );
+        }
+      }).fail(function (xhr) {
+        $('#confirmationText').text(xhr.responseJSON?.message || 'Unable to load order confirmation.');
+      });
+    });
+  </script>
 </body>
 </html>

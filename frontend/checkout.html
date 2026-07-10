@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %></title>
+  <title>Checkout</title>
   <link rel="stylesheet" href="/css/catalog.css">
 </head>
 <body>
@@ -18,14 +18,14 @@
     </header>
 
     <section class="cart-panel">
-      <% if (error) { %>
-        <p class="form-error"><%= error %></p>
-      <% } %>
+      <p id="checkoutError" class="form-error hidden"></p>
 
-      <% if (items.length === 0) { %>
-        <p class="empty-message is-visible">Your cart is empty.</p>
+      <div id="emptyState" class="empty-message is-visible hidden">
+        Your cart is empty.
         <p><a href="/shop">Browse products</a></p>
-      <% } else { %>
+      </div>
+
+      <div id="checkoutBody" class="hidden">
         <div class="cart-table-wrap">
           <table class="cart-table">
             <thead>
@@ -36,34 +36,95 @@
                 <th>Subtotal</th>
               </tr>
             </thead>
-            <tbody>
-              <% items.forEach((item) => { %>
-                <tr>
-                  <td><%= item.product_name %></td>
-                  <td>PHP <%= item.price.toFixed(2) %></td>
-                  <td><%= item.quantity %></td>
-                  <td>PHP <%= item.subtotal.toFixed(2) %></td>
-                </tr>
-              <% }) %>
-            </tbody>
+            <tbody id="checkoutItems"></tbody>
           </table>
         </div>
 
-        <form action="/checkout" method="POST" class="checkout-form">
+        <form id="checkoutForm" class="checkout-form">
           <label for="payment_method">Payment Method</label>
-          <select id="payment_method" name="payment_method" required>
-            <% paymentMethods.forEach((method) => { %>
-              <option value="<%= method %>" <%= selectedPaymentMethod === method ? 'selected' : '' %>>
-                <%= method %>
-              </option>
-            <% }) %>
-          </select>
-
-          <p>Total: PHP <strong><%= total.toFixed(2) %></strong></p>
+          <select id="payment_method" name="payment_method" required></select>
+          <p>Total: PHP <strong id="checkoutTotal">0.00</strong></p>
           <button type="submit">Place Order</button>
         </form>
-      <% } %>
+      </div>
     </section>
   </main>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script>
+    $(function () {
+      let paymentMethods = [];
+      let currentTotal = 0;
+
+      function money(value) {
+        return Number(value).toFixed(2);
+      }
+
+      function loadCheckout() {
+        $.ajax({
+          url: '/api/v1/checkout',
+          method: 'GET',
+          dataType: 'json',
+          success: function (response) {
+            const items = response.result.items || [];
+            paymentMethods = response.paymentMethods || [];
+            currentTotal = response.result.total || 0;
+
+            if (!items.length) {
+              $('#emptyState').removeClass('hidden');
+              $('#checkoutBody').addClass('hidden');
+              return;
+            }
+
+            $('#emptyState').addClass('hidden');
+            $('#checkoutBody').removeClass('hidden');
+            $('#checkoutTotal').text(money(currentTotal));
+
+            const $items = $('#checkoutItems');
+            $items.empty();
+            items.forEach(function (item) {
+              $items.append(`
+                <tr>
+                  <td>${item.product_name}</td>
+                  <td>PHP ${money(item.price)}</td>
+                  <td>${item.quantity}</td>
+                  <td>PHP ${money(item.subtotal)}</td>
+                </tr>
+              `);
+            });
+
+            const $payment = $('#payment_method');
+            $payment.empty();
+            paymentMethods.forEach(function (method) {
+              $payment.append(`<option value="${method}">${method}</option>`);
+            });
+          },
+          error: function (xhr) {
+            $('#checkoutError').removeClass('hidden').text(xhr.responseJSON?.message || 'Unable to load checkout.');
+          }
+        });
+      }
+
+      $('#checkoutForm').on('submit', function (event) {
+        event.preventDefault();
+
+        $.ajax({
+          url: '/api/v1/orders',
+          method: 'POST',
+          data: JSON.stringify({ payment_method: $('#payment_method').val() }),
+          contentType: 'application/json',
+          dataType: 'json',
+          success: function (response) {
+            window.location.href = `/orders/${response.result.id}/confirmation`;
+          },
+          error: function (xhr) {
+            $('#checkoutError').removeClass('hidden').text(xhr.responseJSON?.message || 'Checkout failed.');
+          }
+        });
+      });
+
+      loadCheckout();
+    });
+  </script>
 </body>
 </html>

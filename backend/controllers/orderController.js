@@ -3,16 +3,7 @@ const path = require('path');
 
 async function checkoutPage(req, res) {
   try {
-    const cart = await orderModel.getCheckoutCart(req.session.user.id);
-
-    res.render('checkout', {
-      title: 'Checkout',
-      items: cart.items,
-      total: cart.total,
-      paymentMethods: orderModel.PAYMENT_METHODS,
-      error: null,
-      selectedPaymentMethod: 'Cash on Delivery',
-    });
+    res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'checkout.html'));
   } catch (error) {
     console.error(error);
     res.status(500).send('Unable to load checkout.');
@@ -32,16 +23,7 @@ async function placeOrder(req, res) {
       console.error(error);
     }
 
-    const cart = await orderModel.getCheckoutCart(req.session.user.id);
-
-    return res.status(statusCode).render('checkout', {
-      title: 'Checkout',
-      items: cart.items,
-      total: cart.total,
-      paymentMethods: orderModel.PAYMENT_METHODS,
-      error: error.message || 'Checkout failed.',
-      selectedPaymentMethod,
-    });
+    return res.status(statusCode).send(error.message || 'Checkout failed.');
   }
 }
 
@@ -53,10 +35,7 @@ async function confirmationPage(req, res) {
       return res.status(404).send('Order not found.');
     }
 
-    return res.render('order-confirmation', {
-      title: 'Order Confirmed',
-      order,
-    });
+    return res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'order-confirmation.html'));
   } catch (error) {
     console.error(error);
     return res.status(500).send('Unable to load order confirmation.');
@@ -65,12 +44,7 @@ async function confirmationPage(req, res) {
 
 async function orderHistory(req, res) {
   try {
-    const orders = await orderModel.getOrdersForUser(req.session.user.id);
-
-    res.render('order-history', {
-      title: 'Order History',
-      orders,
-    });
+    res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'order-history.html'));
   } catch (error) {
     console.error(error);
     res.status(500).send('Unable to load order history.');

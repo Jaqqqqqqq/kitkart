@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const { getRedirectUrlForRole } = require('../controllers/authController');
 
 const router = express.Router();
@@ -8,14 +9,7 @@ router.get('/', (req, res) => {
     return res.redirect(getRedirectUrlForRole(req.session.user.role));
   }
 
-  return res.render('index', { title: 'Kitkart' }, (error, html) => {
-    if (error) {
-      console.error('Home render failed:', error);
-      return res.status(500).send(error.message);
-    }
-
-    return res.send(html);
-  });
+  return res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'index.html'));
 });
 
 module.exports = router;
