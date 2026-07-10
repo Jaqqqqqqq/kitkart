@@ -280,6 +280,7 @@ $(function () {
     event.preventDefault();
 
     const $form = $(this);
+    const $row = $form.closest('tr');
 
     showConfirmModal('Delete this record?', function () {
       apiAjax({
@@ -292,13 +293,19 @@ $(function () {
             return;
           }
 
-          const rowSelector = $form.data('row');
           const table = $form.closest('table').DataTable();
+          const rowNode = $row.get(0);
 
-          if (table) {
-            table.row($(rowSelector)).remove().draw();
+          if (table && typeof table.row === 'function' && rowNode) {
+            const rowApi = table.row(rowNode);
+            if (rowApi.any()) {
+              rowApi.remove();
+              table.draw();
+            } else {
+              $row.remove();
+            }
           } else {
-            $(rowSelector).remove();
+            $row.remove();
           }
 
           showToast(data.message || 'Deleted successfully.', 'success');
@@ -309,15 +316,6 @@ $(function () {
         },
       });
     });
-  });
-
-  enhanceDataTable('#productsTable', {
-    pageLength: 10,
-    lengthChange: false,
-    order: [[0, 'asc']],
-    columnDefs: [
-      { targets: -1, orderable: false, searchable: false },
-    ],
   });
 
   enhanceDataTable('#categoriesTable', {

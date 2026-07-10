@@ -42,40 +42,44 @@
   <script src="/js/admin-crud.js"></script>
   <script>
     $(function () {
-      $.get('/api/v1/products', function (response) {
-        const products = response.rows || [];
-        const $body = $('#productsBody');
-        $body.empty();
+      function loadProducts() {
+        $.get('/api/v1/products', function (response) {
+          const products = response.rows || [];
+          const $body = $('#productsBody');
+          $body.empty();
 
-        products.forEach(function (product) {
-          let imagePath = '';
-          if (product.gallery_images && product.gallery_images.length) {
-            imagePath = product.gallery_images[0].image_path;
-          } else if (product.image) {
-            imagePath = product.image;
+          products.forEach(function (product) {
+            let imagePath = '';
+            if (product.gallery_images && product.gallery_images.length) {
+              imagePath = product.gallery_images[0].image_path;
+            } else if (product.image) {
+              imagePath = product.image;
+            }
+            const imageUrl = imagePath ? (imagePath.startsWith('/') || imagePath.startsWith('http') ? imagePath : '/images/' + imagePath) : '';
+            $body.append(`
+              <tr id="product-row-${product.id}">
+                <td>${product.product_name}</td>
+                <td>${product.category_name || '-'}</td>
+                <td>PHP ${Number(product.price).toFixed(2)}</td>
+                <td>${product.stock_quantity}</td>
+                <td>${imageUrl ? `<img class="table-image" src="${imageUrl}" alt="${product.product_name}">` : '-'}</td>
+                <td>
+                  <a href="/admin/products/${product.id}/edit" class="action-link">Edit</a>
+                  <form action="/admin/products/${product.id}/delete" method="POST" class="inline-form js-api-delete" data-api-url="/api/v1/products/${product.id}" data-row="#product-row-${product.id}">
+                    <button type="submit" class="remove-button">Delete</button>
+                  </form>
+                </td>
+              </tr>
+            `);
+          });
+
+          if (!$.fn.DataTable.isDataTable('#productsTable')) {
+            $('#productsTable').DataTable({ pageLength: 10, lengthChange: false, order: [[0, 'asc']] });
           }
-          const imageUrl = imagePath ? (imagePath.startsWith('/') || imagePath.startsWith('http') ? imagePath : '/images/' + imagePath) : '';
-          $body.append(`
-            <tr id="product-row-${product.id}">
-              <td>${product.product_name}</td>
-              <td>${product.category_name || '-'}</td>
-              <td>PHP ${Number(product.price).toFixed(2)}</td>
-              <td>${product.stock_quantity}</td>
-              <td>${imageUrl ? `<img class="table-image" src="${imageUrl}" alt="${product.product_name}">` : '-'}</td>
-              <td>
-                <a href="/admin/products/${product.id}/edit" class="action-link">Edit</a>
-                <form action="/admin/products/${product.id}/delete" method="POST" class="inline-form js-api-delete" data-api-url="/api/v1/products/${product.id}" data-row="#product-row-${product.id}">
-                  <button type="submit" class="remove-button">Delete</button>
-                </form>
-              </td>
-            </tr>
-          `);
         });
+      }
 
-        if (!$.fn.DataTable.isDataTable('#productsTable')) {
-          $('#productsTable').DataTable({ pageLength: 10, lengthChange: false, order: [[0, 'asc']] });
-        }
-      });
+      loadProducts();
     });
   </script>
 </body>
